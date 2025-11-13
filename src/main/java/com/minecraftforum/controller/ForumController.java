@@ -7,6 +7,8 @@ import com.minecraftforum.config.AnonymousAccess;
 import com.minecraftforum.entity.Comment;
 import com.minecraftforum.entity.ForumPost;
 import com.minecraftforum.entity.ForumReply;
+import com.minecraftforum.mapper.CommentMapper;
+import com.minecraftforum.mapper.ForumReplyMapper;
 import com.minecraftforum.service.ForumService;
 import com.minecraftforum.util.JwtUtil;
 import jakarta.servlet.http.HttpServletRequest;
@@ -23,6 +25,8 @@ public class ForumController {
 
     private final ForumService forumService;
     private final JwtUtil jwtUtil;
+    private final CommentMapper commentMapper;
+    private final ForumReplyMapper replyMapper;
 
     @GetMapping("/posts")
     @AnonymousAccess
@@ -45,8 +49,12 @@ public class ForumController {
     }
 
     @GetMapping("/posts/{id}")
+    @AnonymousAccess
     public Result<ForumPost> getPostById(@PathVariable Long id) {
         ForumPost post = forumService.getPostById(id);
+        if (post == null) {
+            return Result.error(404, "帖子不存在");
+        }
         return Result.success(post);
     }
 
@@ -67,6 +75,9 @@ public class ForumController {
         Long userId = jwtUtil.getUserIdFromToken(token);
 
         ForumPost existing = forumService.getPostById(id);
+        if (existing == null) {
+            return Result.error(404, "帖子不存在");
+        }
         if (!existing.getAuthorId().equals(userId)) {
             return Result.error(403, "没有权限修改此帖子");
         }
@@ -82,6 +93,9 @@ public class ForumController {
         Long userId = jwtUtil.getUserIdFromToken(token);
 
         ForumPost post = forumService.getPostById(id);
+        if (post == null) {
+            return Result.error(404, "帖子不存在");
+        }
         if (!post.getAuthorId().equals(userId)) {
             return Result.error(403, "没有权限删除此帖子");
         }
@@ -122,7 +136,23 @@ public class ForumController {
         String token = getTokenFromRequest(request);
         Long userId = jwtUtil.getUserIdFromToken(token);
 
-        // TODO: 检查权限
+        // 检查权限：只有评论作者或帖子作者可以删除评论
+        Comment comment = commentMapper.selectById(id);
+        if (comment == null) {
+            return Result.error(404, "评论不存在");
+        }
+        
+        // 检查是否是评论作者
+        boolean isCommentAuthor = comment.getAuthorId().equals(userId);
+        
+        // 检查是否是帖子作者
+        ForumPost post = forumService.getPostById(comment.getResourceId());
+        boolean isPostAuthor = post != null && post.getAuthorId().equals(userId);
+        
+        if (!isCommentAuthor && !isPostAuthor) {
+            return Result.error(403, "没有权限删除此评论");
+        }
+        
         forumService.deleteComment(id);
         return Result.success(null);
     }
@@ -145,7 +175,30 @@ public class ForumController {
         String token = getTokenFromRequest(request);
         Long userId = jwtUtil.getUserIdFromToken(token);
 
-        // TODO: 检查权限
+        // 检查权限：只有回复作者、评论作者或帖子作者可以删除回复
+        ForumReply reply = replyMapper.selectById(id);
+        if (reply == null) {
+            return Result.error(404, "回复不存在");
+        }
+        
+        // 检查是否是回复作者
+        boolean isReplyAuthor = reply.getAuthorId().equals(userId);
+        
+        // 检查是否是评论作者
+        Comment comment = commentMapper.selectById(reply.getCommentId());
+        boolean isCommentAuthor = comment != null && comment.getAuthorId().equals(userId);
+        
+        // 检查是否是帖子作者
+        boolean isPostAuthor = false;
+        if (comment != null) {
+            ForumPost post = forumService.getPostById(comment.getResourceId());
+            isPostAuthor = post != null && post.getAuthorId().equals(userId);
+        }
+        
+        if (!isReplyAuthor && !isCommentAuthor && !isPostAuthor) {
+            return Result.error(403, "没有权限删除此回复");
+        }
+        
         forumService.deleteReply(id);
         return Result.success(null);
     }

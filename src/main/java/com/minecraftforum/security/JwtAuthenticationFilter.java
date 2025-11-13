@@ -1,6 +1,8 @@
 package com.minecraftforum.security;
 
 import com.minecraftforum.config.AnonymousAccess;
+import com.minecraftforum.entity.Permission;
+import com.minecraftforum.service.PermissionService;
 import com.minecraftforum.util.JwtUtil;
 import io.jsonwebtoken.JwtException;
 import jakarta.servlet.FilterChain;
@@ -22,7 +24,10 @@ import org.springframework.web.servlet.HandlerExecutionChain;
 import org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerMapping;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Collections;
+import java.util.List;
+import java.util.stream.Collectors;
 
 import static cn.hutool.core.lang.Console.log;
 
@@ -31,6 +36,7 @@ import static cn.hutool.core.lang.Console.log;
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private final JwtUtil jwtUtil;
+    private final PermissionService permissionService;
 
     @Autowired
     private RequestMappingHandlerMapping handlerMapping;
@@ -59,8 +65,27 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             try {
                 String username = jwtUtil.getUsernameFromToken(token);
                 String role = jwtUtil.getRoleFromToken(token);
+                Long userId = jwtUtil.getUserIdFromToken(token);
 
-                UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(username, null, Collections.singletonList(new SimpleGrantedAuthority("ROLE_" + role)));
+                // 构建权限列表
+                List<SimpleGrantedAuthority> authorities = new ArrayList<>();
+                
+                // 添加角色权限（兼容旧系统）
+                authorities.add(new SimpleGrantedAuthority("ROLE_" + role));
+                
+                // 从权限系统加载用户的所有权限，并添加为GrantedAuthority
+                try {
+                    List<Permission> permissions = permissionService.getUserPermissions(userId);
+                    for (Permission permission : permissions) {
+                        // 将权限代码添加为GrantedAuthority
+                        authorities.add(new SimpleGrantedAuthority(permission.getCode()));
+                    }
+                } catch (Exception e) {
+                    // 如果加载权限失败，只使用角色权限
+                }
+
+                UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
+                    username, null, authorities);
                 SecurityContextHolder.getContext().setAuthentication(authentication);
             } catch (Exception e) {
                 // Token 无效，继续过滤链

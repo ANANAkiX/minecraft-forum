@@ -32,7 +32,7 @@ public class ResourceController {
     private final ObjectMapper objectMapper;
 
     @GetMapping("/list")
-    @AnonymousAccess
+    //@AnonymousAccess
     public Result<Map<String, Object>> getResourceList(
             @RequestParam(defaultValue = "1") Integer page,
             @RequestParam(defaultValue = "10") Integer pageSize,
@@ -51,8 +51,12 @@ public class ResourceController {
     }
 
     @GetMapping("/{id}")
+    @AnonymousAccess
     public Result<ResourceDTO> getResourceById(@PathVariable Long id) {
         ResourceDTO resource = resourceService.getResourceById(id);
+        if (resource == null) {
+            return Result.error(404, "资源不存在");
+        }
         return Result.success(resource);
     }
 

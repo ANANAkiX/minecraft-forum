@@ -73,8 +73,10 @@ public class ForumServiceImpl implements ForumService {
     @Override
     public void deletePost(Long id) {
         ForumPost post = postMapper.selectById(id);
-        post.setStatus("DELETED");
-        postMapper.updateById(post);
+        if (post != null) {
+            post.setStatus("DELETED");
+            postMapper.updateById(post);
+        }
     }
     
     @Override
@@ -92,8 +94,10 @@ public class ForumServiceImpl implements ForumService {
             likeMapper.insert(like);
             
             ForumPost post = postMapper.selectById(postId);
-            post.setLikeCount(post.getLikeCount() + 1);
-            postMapper.updateById(post);
+            if (post != null) {
+                post.setLikeCount(post.getLikeCount() + 1);
+                postMapper.updateById(post);
+            }
         }
     }
     
@@ -103,19 +107,27 @@ public class ForumServiceImpl implements ForumService {
         LambdaQueryWrapper<Like> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(Like::getPostId, postId);
         wrapper.eq(Like::getUserId, userId);
-        likeMapper.delete(wrapper);
         
-        ForumPost post = postMapper.selectById(postId);
-        post.setLikeCount(Math.max(0, post.getLikeCount() - 1));
-        postMapper.updateById(post);
+        Like existingLike = likeMapper.selectOne(wrapper);
+        if (existingLike != null) {
+            likeMapper.delete(wrapper);
+            
+            ForumPost post = postMapper.selectById(postId);
+            if (post != null) {
+                post.setLikeCount(Math.max(0, post.getLikeCount() - 1));
+                postMapper.updateById(post);
+            }
+        }
     }
     
     @Override
     @Transactional
     public void viewPost(Long postId) {
         ForumPost post = postMapper.selectById(postId);
-        post.setViewCount(post.getViewCount() + 1);
-        postMapper.updateById(post);
+        if (post != null) {
+            post.setViewCount(post.getViewCount() + 1);
+            postMapper.updateById(post);
+        }
     }
     
     @Override
@@ -130,8 +142,10 @@ public class ForumServiceImpl implements ForumService {
         commentMapper.insert(comment);
         
         ForumPost post = postMapper.selectById(postId);
-        post.setCommentCount(post.getCommentCount() + 1);
-        postMapper.updateById(post);
+        if (post != null) {
+            post.setCommentCount(post.getCommentCount() + 1);
+            postMapper.updateById(post);
+        }
         
         return comment;
     }
@@ -140,11 +154,14 @@ public class ForumServiceImpl implements ForumService {
     @Transactional
     public void deleteComment(Long commentId) {
         Comment comment = commentMapper.selectById(commentId);
-        ForumPost post = postMapper.selectById(comment.getResourceId());
-        post.setCommentCount(Math.max(0, post.getCommentCount() - 1));
-        postMapper.updateById(post);
-        
-        commentMapper.deleteById(commentId);
+        if (comment != null) {
+            ForumPost post = postMapper.selectById(comment.getResourceId());
+            if (post != null) {
+                post.setCommentCount(Math.max(0, post.getCommentCount() - 1));
+                postMapper.updateById(post);
+            }
+            commentMapper.deleteById(commentId);
+        }
     }
     
     @Override
@@ -180,8 +197,10 @@ public class ForumServiceImpl implements ForumService {
             likeMapper.insert(like);
             
             Comment comment = commentMapper.selectById(commentId);
-            comment.setLikeCount(comment.getLikeCount() + 1);
-            commentMapper.updateById(comment);
+            if (comment != null) {
+                comment.setLikeCount(comment.getLikeCount() + 1);
+                commentMapper.updateById(comment);
+            }
         }
     }
     
@@ -200,9 +219,15 @@ public class ForumServiceImpl implements ForumService {
             likeMapper.insert(like);
             
             ForumReply reply = replyMapper.selectById(replyId);
-            reply.setLikeCount(reply.getLikeCount() + 1);
-            replyMapper.updateById(reply);
+            if (reply != null) {
+                reply.setLikeCount(reply.getLikeCount() + 1);
+                replyMapper.updateById(reply);
+            }
         }
     }
 }
+
+
+
+
 

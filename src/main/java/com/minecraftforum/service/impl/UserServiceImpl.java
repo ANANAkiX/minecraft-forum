@@ -1,6 +1,8 @@
 package com.minecraftforum.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.metadata.IPage;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.minecraftforum.dto.LoginRequest;
 import com.minecraftforum.dto.RegisterRequest;
 import com.minecraftforum.entity.User;
@@ -10,6 +12,7 @@ import com.minecraftforum.util.JwtUtil;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.util.StringUtils;
 
 import java.time.LocalDateTime;
 
@@ -85,6 +88,42 @@ public class UserServiceImpl implements UserService {
     public User updateUser(User user) {
         user.setUpdateTime(LocalDateTime.now());
         userMapper.updateById(user);
+        return user;
+    }
+    
+    @Override
+    public IPage<User> getUserList(Page<User> page, String keyword) {
+        LambdaQueryWrapper<User> wrapper = new LambdaQueryWrapper<>();
+        
+        // 支持关键词搜索（用户名、昵称、邮箱）
+        if (StringUtils.hasText(keyword)) {
+            wrapper.and(w -> w.like(User::getUsername, keyword)
+                    .or().like(User::getNickname, keyword)
+                    .or().like(User::getEmail, keyword));
+        }
+        
+        // 按创建时间倒序
+        wrapper.orderByDesc(User::getCreateTime);
+        
+        // 查询所有用户（包括已删除的，如果表有deleted字段，MyBatis Plus会自动处理）
+        IPage<User> result = userMapper.selectPage(page, wrapper);
+        
+        // 清除密码信息
+        result.getRecords().forEach(u -> u.setPassword(null));
+        
+        return result;
+    }
+    
+    @Override
+    public User updateUserRole(Long userId, String role) {
+        User user = userMapper.selectById(userId);
+        if (user == null) {
+            throw new RuntimeException("用户不存在");
+        }
+        user.setRole(role);
+        user.setUpdateTime(LocalDateTime.now());
+        userMapper.updateById(user);
+        user.setPassword(null);
         return user;
     }
 }

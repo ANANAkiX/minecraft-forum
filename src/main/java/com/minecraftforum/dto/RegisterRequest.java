@@ -22,3 +22,7 @@ public class RegisterRequest {
     private String nickname;
 }
 
+
+
+
+

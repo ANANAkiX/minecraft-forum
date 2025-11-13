@@ -23,3 +23,7 @@ public interface ForumService {
     void likeReply(Long replyId, Long userId);
 }
 
+
+
+
+

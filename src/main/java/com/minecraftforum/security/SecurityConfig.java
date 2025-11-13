@@ -48,8 +48,9 @@ public class SecurityConfig {
                                 "/v3/api-docs/**",
                                 "/swagger-resources/**")
                         .permitAll()
+                        // 后台管理接口：需要page:admin权限或ROLE_ADMIN角色（兼容旧系统）
                         .requestMatchers("/api/admin/**")
-                        .hasRole("ADMIN")
+                        .hasAnyAuthority("page:admin", "ROLE_ADMIN")
                         .anyRequest()
                         .authenticated()
                 )

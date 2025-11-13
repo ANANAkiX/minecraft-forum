@@ -151,8 +151,10 @@ public class ResourceServiceImpl implements ResourceService {
             likeMapper.insert(like);
             
             Resource resource = resourceMapper.selectById(resourceId);
-            resource.setLikeCount(resource.getLikeCount() + 1);
-            resourceMapper.updateById(resource);
+            if (resource != null) {
+                resource.setLikeCount(resource.getLikeCount() + 1);
+                resourceMapper.updateById(resource);
+            }
         }
     }
     
@@ -162,11 +164,17 @@ public class ResourceServiceImpl implements ResourceService {
         LambdaQueryWrapper<Like> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(Like::getResourceId, resourceId);
         wrapper.eq(Like::getUserId, userId);
-        likeMapper.delete(wrapper);
         
-        Resource resource = resourceMapper.selectById(resourceId);
-        resource.setLikeCount(Math.max(0, resource.getLikeCount() - 1));
-        resourceMapper.updateById(resource);
+        Like existingLike = likeMapper.selectOne(wrapper);
+        if (existingLike != null) {
+            likeMapper.delete(wrapper);
+            
+            Resource resource = resourceMapper.selectById(resourceId);
+            if (resource != null) {
+                resource.setLikeCount(Math.max(0, resource.getLikeCount() - 1));
+                resourceMapper.updateById(resource);
+            }
+        }
     }
     
     @Override
@@ -184,8 +192,10 @@ public class ResourceServiceImpl implements ResourceService {
             favoriteMapper.insert(favorite);
             
             Resource resource = resourceMapper.selectById(resourceId);
-            resource.setFavoriteCount(resource.getFavoriteCount() + 1);
-            resourceMapper.updateById(resource);
+            if (resource != null) {
+                resource.setFavoriteCount(resource.getFavoriteCount() + 1);
+                resourceMapper.updateById(resource);
+            }
         }
     }
     
@@ -195,11 +205,17 @@ public class ResourceServiceImpl implements ResourceService {
         LambdaQueryWrapper<Favorite> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(Favorite::getResourceId, resourceId);
         wrapper.eq(Favorite::getUserId, userId);
-        favoriteMapper.delete(wrapper);
         
-        Resource resource = resourceMapper.selectById(resourceId);
-        resource.setFavoriteCount(Math.max(0, resource.getFavoriteCount() - 1));
-        resourceMapper.updateById(resource);
+        Favorite existingFavorite = favoriteMapper.selectOne(wrapper);
+        if (existingFavorite != null) {
+            favoriteMapper.delete(wrapper);
+            
+            Resource resource = resourceMapper.selectById(resourceId);
+            if (resource != null) {
+                resource.setFavoriteCount(Math.max(0, resource.getFavoriteCount() - 1));
+                resourceMapper.updateById(resource);
+            }
+        }
     }
     
     @Override
@@ -212,8 +228,10 @@ public class ResourceServiceImpl implements ResourceService {
         downloadLogMapper.insert(log);
         
         Resource resource = resourceMapper.selectById(resourceId);
-        resource.setDownloadCount(resource.getDownloadCount() + 1);
-        resourceMapper.updateById(resource);
+        if (resource != null) {
+            resource.setDownloadCount(resource.getDownloadCount() + 1);
+            resourceMapper.updateById(resource);
+        }
     }
 }
 

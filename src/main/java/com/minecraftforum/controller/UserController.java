@@ -1,7 +1,9 @@
 package com.minecraftforum.controller;
 
 import com.minecraftforum.common.Result;
+import com.minecraftforum.entity.Permission;
 import com.minecraftforum.entity.User;
+import com.minecraftforum.service.PermissionService;
 import com.minecraftforum.service.UserService;
 import com.minecraftforum.util.JwtUtil;
 import jakarta.servlet.http.HttpServletRequest;
@@ -10,6 +12,11 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
+
 @RestController
 @RequestMapping("/api/user")
 @RequiredArgsConstructor
@@ -17,15 +24,36 @@ public class UserController {
     
     private final UserService userService;
     private final JwtUtil jwtUtil;
+    private final PermissionService permissionService;
     
     @GetMapping("/info")
-    public Result<User> getUserInfo(HttpServletRequest request) {
+    public Result<Map<String, Object>> getUserInfo(HttpServletRequest request) {
         String token = getTokenFromRequest(request);
         Long userId = jwtUtil.getUserIdFromToken(token);
         User user = userService.getUserById(userId);
         // 清除密码信息
         user.setPassword(null);
-        return Result.success(user);
+        
+        // 获取用户的所有权限
+        List<Permission> permissions = permissionService.getUserPermissions(userId);
+        List<String> permissionCodes = permissions.stream()
+            .map(Permission::getCode)
+            .collect(Collectors.toList());
+        
+        // 构建返回结果
+        Map<String, Object> result = new HashMap<>();
+        result.put("id", user.getId());
+        result.put("username", user.getUsername());
+        result.put("nickname", user.getNickname());
+        result.put("email", user.getEmail());
+        result.put("avatar", user.getAvatar());
+        result.put("role", user.getRole());
+        result.put("status", user.getStatus());
+        result.put("createTime", user.getCreateTime());
+        result.put("updateTime", user.getUpdateTime());
+        result.put("permissions", permissionCodes);
+        
+        return Result.success(result);
     }
     
     @PutMapping("/info")

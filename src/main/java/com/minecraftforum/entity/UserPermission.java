@@ -8,19 +8,13 @@ import lombok.Data;
 import java.time.LocalDateTime;
 
 @Data
-@TableName("comment")
-public class Comment {
+@TableName("user_permission")
+public class UserPermission {
     @TableId(type = IdType.AUTO)
     private Long id;
     
-    private Long resourceId;
-    private Long authorId;
-    private String content;
-    private Integer likeCount;
+    private Long userId;
+    private Long permissionId;
     private LocalDateTime createTime;
 }
-
-
-
-
 
