@@ -17,6 +17,9 @@ public class Permission {
     private String name; // 权限名称
     private String type; // 权限类型：PAGE-页面访问，ACTION-操作权限
     private String description; // 权限描述
+    private String router; // 访问权限的路由地址（可为空）
+    private String apiurl; // 操作权限的API地址（可为空）
+    private String methodtype; // 请求方式(GET/POST/PUT/DELETE)（可为空）
     private Long parentId; // 父权限ID，0表示顶级权限
     private Integer sortOrder; // 排序顺序
     private Integer status; // 状态：0-禁用，1-启用

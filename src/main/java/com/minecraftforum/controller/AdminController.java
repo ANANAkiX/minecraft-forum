@@ -21,19 +21,18 @@ import com.minecraftforum.dto.ResourceDTO;
 import com.minecraftforum.dto.ForumPostDTO;
 import com.minecraftforum.entity.ForumPost;
 import com.minecraftforum.util.SecurityUtil;
+import com.minecraftforum.util.ApiScanner;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationContext;
 import org.springframework.web.bind.annotation.*;
 
 import jakarta.servlet.http.HttpServletRequest;
 import java.time.LocalDateTime;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
 
 /**
@@ -57,6 +56,8 @@ public class AdminController {
     private final ResourceService resourceService;
     private final ForumService forumService;
     private final SecurityUtil securityUtil;
+    private final ApplicationContext applicationContext;
+    private final ApiScanner apiScanner;
 
     /**
      * 检查当前用户是否有指定权限（从JWT中获取权限，不查询数据库）
@@ -75,20 +76,9 @@ public class AdminController {
     }
 
     /**
-     * 验证管理员权限（从JWT中获取角色，不查询数据库）
-     */
-    private Result<?> checkAdminPermission() {
-        // 检查是否有ROLE_ADMIN角色（从JWT Token中获取）
-        if (!securityUtil.hasRole("ADMIN")) {
-            return Result.error(403, "无权限访问");
-        }
-        return null;
-    }
-
-    /**
      * 获取用户列表
      */
-    @Operation(summary = "获取用户列表", description = "分页获取用户列表，支持关键词搜索，需要admin:user:manage权限")
+    @Operation(summary = "获取用户列表", description = "分页获取用户列表，支持关键词搜索，需要admin:user:read")
     @GetMapping("/users")
     public Result<Map<String, Object>> getUserList(
             @Parameter(description = "页码", example = "1")
@@ -96,11 +86,12 @@ public class AdminController {
             @Parameter(description = "每页数量", example = "10")
             @RequestParam(defaultValue = "10") Integer pageSize,
             @Parameter(description = "搜索关键词（用户名、昵称、邮箱）")
-            @RequestParam(required = false) String keyword) {
+            @RequestParam(required = false) String keyword,
+            HttpServletRequest request) {
 
-        Result<?> checkResult = checkAdminPermission();
-        if (checkResult != null) {
-            return (Result<Map<String, Object>>) checkResult;
+        // 验证权限：需要admin:user:read或admin:user:manage权限
+        if (!checkPermission(request, "admin:user:read") && !checkPermission(request, "admin:user:manage")) {
+            return Result.error(403, "无权限访问");
         }
 
         Page<User> pageObj = new Page<>(page, pageSize);
@@ -124,11 +115,12 @@ public class AdminController {
             @Parameter(description = "用户ID", required = true)
             @PathVariable Long id,
             @Parameter(description = "角色信息", required = true)
-            @RequestBody Map<String, String> body) {
+            @RequestBody Map<String, String> body,
+            HttpServletRequest request) {
 
-        Result<?> checkResult = checkAdminPermission();
-        if (checkResult != null) {
-            return (Result<User>) checkResult;
+        // 验证权限：需要admin:user:manage权限
+        if (!checkPermission(request, "admin:user:manage")) {
+            return Result.error(403, "无权限访问");
         }
 
         String role = body.get("role");
@@ -196,15 +188,16 @@ public class AdminController {
     /**
      * 获取用户角色列表
      */
-    @Operation(summary = "获取用户角色列表", description = "获取指定用户的所有角色，需要admin:user:manage权限")
+    @Operation(summary = "获取用户角色列表", description = "获取指定用户的所有角色，需要admin:user:read或admin:user:manage权限")
     @GetMapping("/users/{id}/roles")
     public Result<List<com.minecraftforum.entity.Role>> getUserRoles(
             @Parameter(description = "用户ID", required = true)
-            @PathVariable Long id) {
+            @PathVariable Long id,
+            HttpServletRequest request) {
 
-        Result<?> checkResult = checkAdminPermission();
-        if (checkResult != null) {
-            return (Result<List<com.minecraftforum.entity.Role>>) checkResult;
+        // 验证权限：需要admin:user:read或admin:user:manage权限
+        if (!checkPermission(request, "admin:user:read") && !checkPermission(request, "admin:user:manage")) {
+            return Result.error(403, "无权限访问");
         }
 
         // 查询用户的所有角色
@@ -215,15 +208,21 @@ public class AdminController {
 
         List<com.minecraftforum.entity.Role> roles = userRoles.stream()
             .map(ur -> roleMapper.selectById(ur.getRoleId()))
-            .filter(r -> r != null)
+            .filter(Objects::nonNull)
             .collect(Collectors.toList());
 
         return Result.success(roles);
     }
 
+    /**
+     * 为用户分配角色
+     */
+    @Operation(summary = "为用户分配角色", description = "为用户分配角色，需要admin:user:update或admin:user:manage权限")
     @PostMapping("/users/{id}/roles")
     public Result<Void> assignUserRole(
+            @Parameter(description = "用户ID", required = true)
             @PathVariable Long id,
+            @Parameter(description = "角色信息", required = true)
             @RequestBody Map<String, Long> body,
             HttpServletRequest request) {
 
@@ -261,9 +260,15 @@ public class AdminController {
         return Result.success(null);
     }
 
+    /**
+     * 移除用户角色
+     */
+    @Operation(summary = "移除用户角色", description = "移除用户的角色，需要admin:user:update或admin:user:manage权限")
     @DeleteMapping("/users/{id}/roles/{roleId}")
     public Result<Void> removeUserRole(
+            @Parameter(description = "用户ID", required = true)
             @PathVariable Long id,
+            @Parameter(description = "角色ID", required = true)
             @PathVariable Long roleId,
             HttpServletRequest request) {
 
@@ -286,9 +291,15 @@ public class AdminController {
     // 如需分配权限，请通过角色管理功能为用户分配角色
     // 注意：getAllPermissions 方法已移除，请使用 getPermissionList 方法
 
+    /**
+     * 更新用户状态
+     */
+    @Operation(summary = "更新用户状态", description = "更新用户的状态（启用/禁用），需要admin:user:update或admin:user:manage权限")
     @PutMapping("/users/{id}/status")
     public Result<User> updateUserStatus(
+            @Parameter(description = "用户ID", required = true)
             @PathVariable Long id,
+            @Parameter(description = "状态信息", required = true)
             @RequestBody Map<String, Integer> body,
             HttpServletRequest request) {
 
@@ -314,6 +325,7 @@ public class AdminController {
     }
 
     @GetMapping("/roles")
+    @Operation(summary = "获取角色列表", description = "获取角色列表，需要admin:role:read 或者 admin:role:manage权限 ")
     public Result<List<Role>> getAllRoles(HttpServletRequest request) {
         // 验证权限：需要admin:role:read或admin:role:manage权限
         if (!checkPermission(request, "admin:role:read") && !checkPermission(request, "admin:role:manage")) {
@@ -324,8 +336,13 @@ public class AdminController {
         return Result.success(roles);
     }
 
+    /**
+     * 创建角色
+     */
+    @Operation(summary = "创建角色", description = "创建新角色，需要admin:role:create或admin:role:manage权限")
     @PostMapping("/roles")
     public Result<Role> createRole(
+            @Parameter(description = "角色信息", required = true)
             @RequestBody Role role,
             HttpServletRequest request) {
 
@@ -370,6 +387,7 @@ public class AdminController {
     }
 
     @PutMapping("/roles/{id}")
+    @Operation(summary = "修改角色", description = "修改角色显示名称等 代码不可修改，需要admin:role:update:role:manage权限")
     public Result<Role> updateRole(
             @PathVariable Long id,
             @RequestBody Role role,
@@ -433,8 +451,13 @@ public class AdminController {
         return Result.success(existingRole);
     }
 
+    /**
+     * 删除角色
+     */
+    @Operation(summary = "删除角色", description = "删除角色，需要admin:role:delete或admin:role:manage权限")
     @DeleteMapping("/roles/{id}")
     public Result<Void> deleteRole(
+            @Parameter(description = "角色ID", required = true)
             @PathVariable Long id,
             HttpServletRequest request) {
 
@@ -469,8 +492,13 @@ public class AdminController {
         return Result.success(null);
     }
 
+    /**
+     * 获取角色权限列表
+     */
+    @Operation(summary = "获取角色权限列表", description = "获取指定角色的所有权限，需要admin:role:read或admin:role:manage权限")
     @GetMapping("/roles/{id}/permissions")
     public Result<List<Permission>> getRolePermissions(
+            @Parameter(description = "角色ID", required = true)
             @PathVariable Long id,
             HttpServletRequest request) {
 
@@ -509,9 +537,15 @@ public class AdminController {
         return Result.success(permissions);
     }
 
+    /**
+     * 为角色分配权限
+     */
+    @Operation(summary = "为角色分配权限", description = "为角色分配权限，需要admin:role:manage或admin:permission:manage权限")
     @PostMapping("/roles/{id}/permissions")
     public Result<Void> assignPermissionToRole(
+            @Parameter(description = "角色ID", required = true)
             @PathVariable Long id,
+            @Parameter(description = "权限信息", required = true)
             @RequestBody Map<String, Long> body,
             HttpServletRequest request) {
 
@@ -557,9 +591,15 @@ public class AdminController {
         return Result.success(null);
     }
 
+    /**
+     * 移除角色权限
+     */
+    @Operation(summary = "移除角色权限", description = "移除角色的权限，需要admin:role:manage或admin:permission:manage权限")
     @DeleteMapping("/roles/{id}/permissions/{permissionId}")
     public Result<Void> removePermissionFromRole(
+            @Parameter(description = "角色ID", required = true)
             @PathVariable Long id,
+            @Parameter(description = "权限ID", required = true)
             @PathVariable Long permissionId,
             HttpServletRequest request) {
 
@@ -920,6 +960,21 @@ public class AdminController {
         
         permissionService.deletePermission(id);
         return Result.success(null);
+    }
+    
+    /**
+     * 获取所有API信息
+     */
+    @Operation(summary = "获取所有API信息", description = "获取系统中所有Controller的API路径、请求方式和描述信息，需要admin:permission:read或admin:permission:manage权限")
+    @GetMapping("/apis")
+    public Result<List<ApiScanner.ApiInfo>> getAllApis(HttpServletRequest request) {
+        // 验证权限：需要admin:permission:read或admin:permission:manage权限
+        if (!checkPermission(request, "admin:permission:read") && !checkPermission(request, "admin:permission:manage")) {
+            return Result.error(403, "无权限访问");
+        }
+        
+        List<ApiScanner.ApiInfo> apiList = apiScanner.scanAllApis(applicationContext);
+        return Result.success(apiList);
     }
 }
 

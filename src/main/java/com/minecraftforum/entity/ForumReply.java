@@ -13,13 +13,15 @@ public class ForumReply {
     @TableId(type = IdType.AUTO)
     private Long id;
     
-    private Long commentId;
+    private Long commentId; // 所属评论ID
+    private Long parentId; // 父回复ID，用于支持嵌套回复（如果为null，则是直接回复评论）
     private Long authorId;
-    private Long targetUserId;
+    private Long targetUserId; // 被回复的用户ID
     private String content;
     private Integer likeCount;
     private LocalDateTime createTime;
 }
+
 
 
 

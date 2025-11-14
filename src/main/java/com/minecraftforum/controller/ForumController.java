@@ -4,7 +4,9 @@ import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.minecraftforum.common.Result;
 import com.minecraftforum.config.custom.annotations.AnonymousAccess;
+import com.minecraftforum.dto.CommentDTO;
 import com.minecraftforum.dto.ForumPostDTO;
+import com.minecraftforum.dto.ReplyDTO;
 import com.minecraftforum.entity.Comment;
 import com.minecraftforum.entity.ForumPost;
 import com.minecraftforum.entity.ForumReply;
@@ -20,6 +22,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -220,7 +223,7 @@ public class ForumController {
     /**
      * 删除评论
      */
-    @Operation(summary = "删除评论", description = "删除评论，只有评论作者或帖子作者可以删除")
+    @Operation(summary = "删除评论", description = "删除评论，只有评论作者可以删除（级联删除所有子回复）")
     @DeleteMapping("/comments/{id}")
     public Result<Void> deleteComment(
             @Parameter(description = "评论ID", required = true)
@@ -231,20 +234,14 @@ public class ForumController {
             return Result.error(401, "未登录");
         }
 
-        // 检查权限：只有评论作者或帖子作者可以删除评论
+        // 检查权限：只有评论作者可以删除评论
         Comment comment = commentMapper.selectById(id);
         if (comment == null) {
             return Result.error(404, "评论不存在");
         }
         
         // 检查是否是评论作者
-        boolean isCommentAuthor = comment.getAuthorId().equals(userId);
-        
-        // 检查是否是帖子作者
-        ForumPostDTO post = forumService.getPostById(comment.getResourceId());
-        boolean isPostAuthor = post != null && post.getAuthorId().equals(userId);
-        
-        if (!isCommentAuthor && !isPostAuthor) {
+        if (!comment.getAuthorId().equals(userId)) {
             return Result.error(403, "没有权限删除此评论");
         }
         
@@ -255,7 +252,7 @@ public class ForumController {
     /**
      * 创建回复
      */
-    @Operation(summary = "创建回复", description = "为评论创建回复，可以@其他用户")
+    @Operation(summary = "创建回复", description = "为评论创建回复，可以@其他用户，支持回复回复（嵌套回复）")
     @PostMapping("/comments/{commentId}/replies")
     public Result<ForumReply> createReply(
             @Parameter(description = "评论ID", required = true)
@@ -271,15 +268,17 @@ public class ForumController {
         String content = (String) body.get("content");
         Long targetUserId = body.get("targetUserId") != null ?
                 Long.valueOf(body.get("targetUserId").toString()) : null;
+        Long parentId = body.get("parentId") != null ?
+                Long.valueOf(body.get("parentId").toString()) : null;
 
-        ForumReply reply = forumService.createReply(commentId, userId, content, targetUserId);
+        ForumReply reply = forumService.createReply(commentId, userId, content, targetUserId, parentId);
         return Result.success(reply);
     }
 
     /**
      * 删除回复
      */
-    @Operation(summary = "删除回复", description = "删除回复，只有回复作者、评论作者或帖子作者可以删除")
+    @Operation(summary = "删除回复", description = "删除回复，只有回复作者可以删除（级联删除所有子回复）")
     @DeleteMapping("/replies/{id}")
     public Result<Void> deleteReply(
             @Parameter(description = "回复ID", required = true)
@@ -290,33 +289,21 @@ public class ForumController {
             return Result.error(401, "未登录");
         }
 
-        // 检查权限：只有回复作者、评论作者或帖子作者可以删除回复
+        // 检查权限：只有回复作者可以删除回复
         ForumReply reply = replyMapper.selectById(id);
         if (reply == null) {
             return Result.error(404, "回复不存在");
         }
         
         // 检查是否是回复作者
-        boolean isReplyAuthor = reply.getAuthorId().equals(userId);
-        
-        // 检查是否是评论作者
-        Comment comment = commentMapper.selectById(reply.getCommentId());
-        boolean isCommentAuthor = comment != null && comment.getAuthorId().equals(userId);
-        
-        // 检查是否是帖子作者
-        boolean isPostAuthor = false;
-        if (comment != null) {
-            ForumPostDTO post = forumService.getPostById(comment.getResourceId());
-            isPostAuthor = post != null && post.getAuthorId().equals(userId);
-        }
-        
-        if (!isReplyAuthor && !isCommentAuthor && !isPostAuthor) {
+        if (!reply.getAuthorId().equals(userId)) {
             return Result.error(403, "没有权限删除此回复");
         }
         
         forumService.deleteReply(id);
         return Result.success(null);
     }
+
 
     /**
      * 点赞评论
@@ -352,5 +339,94 @@ public class ForumController {
         
         forumService.likeReply(id, userId);
         return Result.success(null);
+    }
+    
+    /**
+     * 取消点赞评论
+     */
+    @Operation(summary = "取消点赞评论", description = "取消对评论的点赞")
+    @DeleteMapping("/comments/{id}/like")
+    public Result<Void> unlikeComment(
+            @Parameter(description = "评论ID", required = true)
+            @PathVariable Long id) {
+        
+        Long userId = securityUtil.getCurrentUserId();
+        if (userId == null) {
+            return Result.error(401, "未登录");
+        }
+        
+        forumService.unlikeComment(id, userId);
+        return Result.success(null);
+    }
+    
+    /**
+     * 取消点赞回复
+     */
+    @Operation(summary = "取消点赞回复", description = "取消对回复的点赞")
+    @DeleteMapping("/replies/{id}/like")
+    public Result<Void> unlikeReply(
+            @Parameter(description = "回复ID", required = true)
+            @PathVariable Long id) {
+        
+        Long userId = securityUtil.getCurrentUserId();
+        if (userId == null) {
+            return Result.error(401, "未登录");
+        }
+        
+        forumService.unlikeReply(id, userId);
+        return Result.success(null);
+    }
+    
+    /**
+     * 获取帖子评论列表（分页）
+     */
+    @Operation(summary = "获取帖子评论列表", description = "分页获取帖子的评论列表，返回树形结构")
+    @GetMapping("/posts/{postId}/comments")
+    @AnonymousAccess
+    public Result<Map<String, Object>> getCommentsByPostId(
+            @Parameter(description = "帖子ID", required = true)
+            @PathVariable Long postId,
+            @Parameter(description = "页码", example = "1")
+            @RequestParam(defaultValue = "1") Integer page,
+            @Parameter(description = "每页数量", example = "10")
+            @RequestParam(defaultValue = "10") Integer pageSize) {
+        
+        IPage<CommentDTO> result = forumService.getCommentsByPostId(postId, page, pageSize);
+        
+        Map<String, Object> data = new HashMap<>();
+        data.put("list", result.getRecords());
+        data.put("total", result.getTotal());
+        data.put("page", result.getCurrent());
+        data.put("pageSize", result.getSize());
+        
+        return Result.success(data);
+    }
+    
+    /**
+     * 获取用户评论列表
+     */
+    @Operation(summary = "获取用户评论列表", description = "获取指定用户的所有评论")
+    @GetMapping("/users/{userId}/comments")
+    @AnonymousAccess
+    public Result<List<CommentDTO>> getUserComments(
+            @Parameter(description = "用户ID", required = true)
+            @PathVariable Long userId) {
+        
+        List<CommentDTO> comments = forumService.getUserComments(userId);
+        return Result.success(comments);
+    }
+    
+    /**
+     * 获取评论的子回复列表
+     */
+    @Operation(summary = "获取评论的子回复列表", description = "获取指定评论的所有子回复")
+    @GetMapping("/comments/{commentId}/replies")
+    @AnonymousAccess
+    public Result<List<ReplyDTO>> getRepliesByCommentId(
+            @Parameter(description = "评论ID", required = true)
+            @PathVariable Long commentId) {
+        
+        List<ReplyDTO> replies = forumService.getRepliesByCommentId(commentId);
+        return Result.success(replies);
     }
 }
