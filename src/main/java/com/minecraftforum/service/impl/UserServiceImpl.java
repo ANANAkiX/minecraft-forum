@@ -1,28 +1,45 @@
 package com.minecraftforum.service.impl;
 
+import com.aliyun.oss.OSS;
+import com.aliyun.oss.OSSClientBuilder;
+import com.aliyun.oss.model.PutObjectRequest;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.minecraftforum.config.OssConfig;
 import com.minecraftforum.dto.LoginRequest;
 import com.minecraftforum.dto.RegisterRequest;
+import com.minecraftforum.entity.Permission;
 import com.minecraftforum.entity.User;
 import com.minecraftforum.mapper.UserMapper;
+import com.minecraftforum.service.PermissionService;
 import com.minecraftforum.service.UserService;
 import com.minecraftforum.util.JwtUtil;
+import com.minecraftforum.util.SnowflakeIdGenerator;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
+import org.springframework.web.multipart.MultipartFile;
+
+import java.io.InputStream;
+import java.util.List;
+import java.util.stream.Collectors;
 
 import java.time.LocalDateTime;
 
 @Service
+@Slf4j
 @RequiredArgsConstructor
 public class UserServiceImpl implements UserService {
     
     private final UserMapper userMapper;
     private final PasswordEncoder passwordEncoder;
+    private final OssConfig ossConfig;
+    private final SnowflakeIdGenerator idGenerator = SnowflakeIdGenerator.getInstance();
     private final JwtUtil jwtUtil;
+    private final PermissionService permissionService;
     
     @Override
     public User register(RegisterRequest request) {
@@ -69,7 +86,19 @@ public class UserServiceImpl implements UserService {
             throw new RuntimeException("账号已被禁用");
         }
         
-        return jwtUtil.generateToken(user.getId(), user.getUsername(), user.getRole());
+        // 获取用户的所有权限
+        List<Permission> permissions = permissionService.getUserPermissions(user.getId());
+        List<String> permissionCodes = permissions.stream()
+                .map(Permission::getCode)
+                .collect(Collectors.toList());
+        
+        // 兼容旧的角色判断：如果是ADMIN角色，添加page:admin权限
+        if ("ADMIN".equals(user.getRole()) && !permissionCodes.contains("page:admin")) {
+            permissionCodes.add("page:admin");
+        }
+        
+        // 生成包含权限的Token
+        return jwtUtil.generateTokenWithPermissions(user.getId(), user.getUsername(), user.getRole(), permissionCodes);
     }
     
     @Override
@@ -125,6 +154,94 @@ public class UserServiceImpl implements UserService {
         userMapper.updateById(user);
         user.setPassword(null);
         return user;
+    }
+    
+    @Override
+    public String uploadAvatar(MultipartFile file, Long userId) {
+        if (file == null || file.isEmpty()) {
+            throw new IllegalArgumentException("文件不能为空");
+        }
+        
+        String originalFilename = file.getOriginalFilename();
+        if (originalFilename == null || originalFilename.isEmpty()) {
+            throw new IllegalArgumentException("文件名不能为空");
+        }
+        
+        // 获取文件扩展名
+        String extension = "";
+        int lastDotIndex = originalFilename.lastIndexOf('.');
+        if (lastDotIndex > 0) {
+            extension = originalFilename.substring(lastDotIndex);
+        }
+        
+        // 使用雪花算法生成唯一文件名
+        String uniqueFileName = idGenerator.nextId() + extension;
+        
+        // 构建 OSS 对象键（路径）- 头像存储在 avatar 目录
+        String objectKey = "avatar/" + uniqueFileName;
+        
+        OSS ossClient = null;
+        InputStream inputStream = null;
+        
+        try {
+            // 创建 OSS 客户端
+            ossClient = new OSSClientBuilder().build(
+                    ossConfig.getEndpoint(),
+                    ossConfig.getAccessKeyId(),
+                    ossConfig.getAccessKeySecret()
+            );
+            
+            // 上传文件
+            inputStream = file.getInputStream();
+            PutObjectRequest putObjectRequest = new PutObjectRequest(
+                    ossConfig.getBucketName(),
+                    objectKey,
+                    inputStream
+            );
+            ossClient.putObject(putObjectRequest);
+            
+            // 构建文件访问 URL
+            String domain = ossConfig.getDomain();
+            String avatarUrl;
+            if (domain != null && domain.endsWith("/")) {
+                avatarUrl = domain + objectKey;
+            } else if (domain != null) {
+                avatarUrl = domain + "/" + objectKey;
+            } else {
+                // 如果没有配置域名，使用 endpoint 和 bucket 构建
+                String endpoint = ossConfig.getEndpoint().replace("https://", "").replace("http://", "");
+                avatarUrl = "https://" + ossConfig.getBucketName() + "." + endpoint + "/" + objectKey;
+            }
+            
+            // 更新用户头像URL
+            User user = userMapper.selectById(userId);
+            if (user != null) {
+                user.setAvatar(avatarUrl);
+                user.setUpdateTime(LocalDateTime.now());
+                userMapper.updateById(user);
+            }
+            
+            log.info("头像上传成功: userId={}, avatarUrl={}", userId, avatarUrl);
+            
+            return avatarUrl;
+            
+        } catch (Exception e) {
+            log.error("头像上传失败: {}", e.getMessage(), e);
+            throw new RuntimeException("头像上传失败: " + e.getMessage(), e);
+        } finally {
+            // 关闭流
+            if (inputStream != null) {
+                try {
+                    inputStream.close();
+                } catch (Exception e) {
+                    log.error("关闭输入流失败", e);
+                }
+            }
+            // 关闭 OSS 客户端
+            if (ossClient != null) {
+                ossClient.shutdown();
+            }
+        }
     }
 }
 

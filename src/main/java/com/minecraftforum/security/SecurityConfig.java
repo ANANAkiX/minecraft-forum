@@ -1,6 +1,7 @@
 package com.minecraftforum.security;
 
 import com.minecraftforum.config.AnonymousUrlCollector;
+import com.minecraftforum.config.ForumConfig;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -16,6 +17,7 @@ import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
@@ -26,6 +28,7 @@ import java.util.List;
 public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
+    private final ForumConfig forumConfig;
 
     @Bean
     public PasswordEncoder passwordEncoder() {
@@ -34,29 +37,65 @@ public class SecurityConfig {
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
-        List<String> anonymousUrls = AnonymousUrlCollector.getAnonymousUrls();
+        List<String> anonymousUrls = new ArrayList<>(AnonymousUrlCollector.getAnonymousUrls());
+        
+        // 根据配置决定是否允许首页和论坛的GET请求匿名访问
+        boolean allowAnonymousAccess = forumConfig.getAnonymousAccess() != null && forumConfig.getAnonymousAccess();
+        
+        // 根据配置过滤匿名访问URL列表
+        // 如果允许匿名访问，保留所有URL；否则，移除首页和论坛相关的URL
+        List<String> filteredUrls = filterAnonymousUrls(anonymousUrls, allowAnonymousAccess);
+        
         http
                 .csrf(csrf -> csrf.disable())
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .sessionManagement(session ->
                         session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-                .authorizeHttpRequests(auth -> auth
-                        .requestMatchers(anonymousUrls.toArray(String[]::new)).permitAll() // ✅ 动态放行注解接口
-                        .requestMatchers("/api/auth/**",
-                                "/doc.html",
-                                "/webjars/**",
-                                "/v3/api-docs/**",
-                                "/swagger-resources/**")
-                        .permitAll()
-                        // 后台管理接口：需要page:admin权限或ROLE_ADMIN角色（兼容旧系统）
-                        .requestMatchers("/api/admin/**")
-                        .hasAnyAuthority("page:admin", "ROLE_ADMIN")
-                        .anyRequest()
-                        .authenticated()
-                )
+                .authorizeHttpRequests(auth -> {
+                    auth
+                            // 动态放行@AnonymousAccess注解的接口（根据配置过滤）
+                            .requestMatchers(filteredUrls.toArray(String[]::new)).permitAll()
+                            // 认证相关接口（登录、注册）允许匿名访问，但刷新Token需要认证
+                            .requestMatchers("/api/auth/login", "/api/auth/register").permitAll()
+                            // API文档相关接口允许匿名访问
+                            .requestMatchers("/doc.html",
+                                    "/webjars/**",
+                                    "/v3/api-docs/**",
+                                    "/swagger-resources/**",
+                                    "/favicon.ico")
+                            .permitAll()
+                            // 配置接口允许匿名访问（前端需要获取配置信息）
+                            .requestMatchers("/api/config/**").permitAll();
+                    
+                    auth
+                            // 后台管理接口：需要page:admin权限或ROLE_ADMIN角色（兼容旧系统）
+                            .requestMatchers("/api/admin/**")
+                            .hasAnyAuthority("page:admin", "ROLE_ADMIN")
+                            // 其他所有接口都需要认证（包括/api/auth/refresh）
+                            .anyRequest()
+                            .authenticated();
+                })
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
+    }
+    
+    /**
+     * 根据配置过滤匿名访问URL列表
+     * 如果允许匿名访问，返回所有URL；否则，移除首页和论坛相关的URL
+     */
+    private List<String> filterAnonymousUrls(List<String> urls, boolean allowAnonymousAccess) {
+        if (allowAnonymousAccess) {
+            return urls;
+        }
+        // 如果不允许匿名访问，移除首页和论坛相关的URL
+        // 这样这些URL就不会被permitAll()，会走后面的authenticated()检查
+        return urls.stream()
+                .filter(url -> !url.contains("/api/resource/list") 
+                        && !url.contains("/api/resource/") && !url.equals("/api/resource")
+                        && !url.contains("/api/forum/posts")
+                        && !url.contains("/api/category-config/enabled"))
+                .toList();
     }
 
     @Bean

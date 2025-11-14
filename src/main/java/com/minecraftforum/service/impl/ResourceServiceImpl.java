@@ -8,12 +8,16 @@ import com.minecraftforum.dto.ResourceDTO;
 import com.minecraftforum.entity.*;
 import com.minecraftforum.mapper.*;
 import com.minecraftforum.service.ResourceService;
+import com.minecraftforum.util.SecurityUtil;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -28,13 +32,40 @@ public class ResourceServiceImpl implements ResourceService {
     private final UserMapper userMapper;
     private final ResourceTagMapper resourceTagMapper;
     private final ForumConfig forumConfig;
+    private final SecurityUtil securityUtil;
     
     @Override
     public IPage<ResourceDTO> getResourceList(Page<Resource> page, String category, String keyword, Long authorId) {
         LambdaQueryWrapper<Resource> wrapper = new LambdaQueryWrapper<>();
         
         if (StringUtils.hasText(category)) {
+            // 指定了具体分类，直接查询该分类
             wrapper.eq(Resource::getCategory, category);
+        } else {
+            // 当category为空（即"全部"）时，根据用户权限过滤分类
+            // 如果允许匿名访问且用户未登录，显示所有分类
+            Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+            boolean isAnonymous = authentication == null 
+                    || !authentication.isAuthenticated() 
+                    || "anonymousUser".equals(authentication.getPrincipal());
+            
+            if (forumConfig.getAnonymousAccess() != null && forumConfig.getAnonymousAccess() && isAnonymous) {
+                // 允许匿名访问且用户未登录，不进行权限过滤，显示所有分类
+                // 不添加分类条件，查询所有分类的资源
+            } else {
+                // 根据用户权限过滤分类
+                // 例如：用户有MOD和整合包权限，查询"全部"时只返回这两个分类下的文章
+                // 如果用户没有MOD权限，查询"全部"时会排除MOD分类下的所有文章
+                List<String> allowedCategories = getAllowedCategories();
+                if (allowedCategories.isEmpty()) {
+                    // 如果用户没有任何分类权限，返回空结果
+                    IPage<ResourceDTO> emptyPage = new Page<>(page.getCurrent(), page.getSize(), 0);
+                    emptyPage.setRecords(new ArrayList<>());
+                    return emptyPage;
+                }
+                // 使用IN查询，只返回用户有权限的分类下的文章
+                wrapper.in(Resource::getCategory, allowedCategories);
+            }
         }
         
         if (StringUtils.hasText(keyword)) {
@@ -59,13 +90,110 @@ public class ResourceServiceImpl implements ResourceService {
         IPage<Resource> resourcePage = resourceMapper.selectPage(page, wrapper);
         
         // 转换为 DTO 并填充作者信息
+        Long currentUserId = securityUtil.getCurrentUserId();
         IPage<ResourceDTO> dtoPage = new Page<>(resourcePage.getCurrent(), resourcePage.getSize(), resourcePage.getTotal());
         List<ResourceDTO> dtoList = resourcePage.getRecords().stream()
-                .map(this::convertToDTO)
+                .map(resource -> convertToDTO(resource, currentUserId))
                 .collect(Collectors.toList());
         dtoPage.setRecords(dtoList);
         
         return dtoPage;
+    }
+    
+    @Override
+    public IPage<ResourceDTO> getAllResourceList(Page<Resource> page, String category, String keyword, Long authorId) {
+        return getAllResourceList(page, category, keyword, authorId, null);
+    }
+    
+    public IPage<ResourceDTO> getAllResourceList(Page<Resource> page, String category, String keyword, Long authorId, String status) {
+        LambdaQueryWrapper<Resource> wrapper = new LambdaQueryWrapper<>();
+        
+        if (StringUtils.hasText(category)) {
+            wrapper.eq(Resource::getCategory, category);
+        }
+        
+        if (StringUtils.hasText(keyword)) {
+            wrapper.and(w -> w.like(Resource::getTitle, keyword)
+                    .or().like(Resource::getDescription, keyword));
+        }
+        
+        if (authorId != null) {
+            wrapper.eq(Resource::getAuthorId, authorId);
+        }
+        
+        // 如果指定了状态，则按状态筛选；否则显示所有状态的资源
+        if (StringUtils.hasText(status)) {
+            wrapper.eq(Resource::getStatus, status);
+        }
+        
+        wrapper.orderByDesc(Resource::getCreateTime);
+        
+        IPage<Resource> resourcePage = resourceMapper.selectPage(page, wrapper);
+        
+        // 转换为 DTO 并填充作者信息
+        Long currentUserId = securityUtil.getCurrentUserId();
+        IPage<ResourceDTO> dtoPage = new Page<>(resourcePage.getCurrent(), resourcePage.getSize(), resourcePage.getTotal());
+        List<ResourceDTO> dtoList = resourcePage.getRecords().stream()
+                .map(resource -> convertToDTO(resource, currentUserId))
+                .collect(Collectors.toList());
+        dtoPage.setRecords(dtoList);
+        
+        return dtoPage;
+    }
+    
+    /**
+     * 根据用户权限获取允许的分类列表
+     * 
+     * 权限映射关系：
+     * - page:home:all -> 显示所有分类（PACK、MOD、RESOURCE）
+     * - page:home:pack -> PACK（整合包）
+     * - page:home:mod -> MOD
+     * - page:home:resource -> RESOURCE（资源包）
+     * 
+     * 示例：
+     * - 用户有MOD和整合包权限 -> 返回["PACK", "MOD"]，查询"全部"时只返回这两个分类下的文章
+     * - 用户没有MOD权限 -> 返回["PACK"]，查询"全部"时会排除MOD分类下的所有文章
+     * 
+     * @return 用户有权限的分类代码列表
+     */
+    private List<String> getAllowedCategories() {
+        List<String> allowedCategories = new ArrayList<>();
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        
+        // 如果用户未登录或者是匿名用户，返回空列表（不允许查看任何分类）
+        if (authentication == null 
+                || !authentication.isAuthenticated() 
+                || "anonymousUser".equals(authentication.getPrincipal())) {
+            return allowedCategories;
+        }
+        
+        // 检查用户权限
+        boolean hasAll = securityUtil.hasPermission("page:home:all");
+        boolean hasPack = securityUtil.hasPermission("page:home:pack");
+        boolean hasMod = securityUtil.hasPermission("page:home:mod");
+        boolean hasResource = securityUtil.hasPermission("page:home:resource");
+        
+        // 根据权限添加允许的分类
+        if (hasAll) {
+            // 如果有"全部"权限，显示所有可能的分类
+            allowedCategories.add("PACK");      // 整合包
+            allowedCategories.add("MOD");        // MOD
+            allowedCategories.add("RESOURCE");   // 资源包
+        } else {
+            // 如果没有"全部"权限，只添加有权限的特定分类
+            // 这样查询"全部"时，只会返回用户有权限的分类下的文章
+            if (hasPack) {
+                allowedCategories.add("PACK");  // 整合包
+            }
+            if (hasMod) {
+                allowedCategories.add("MOD");    // MOD
+            }
+            if (hasResource) {
+                allowedCategories.add("RESOURCE"); // 资源包
+            }
+        }
+        
+        return allowedCategories;
     }
     
     @Override
@@ -74,10 +202,14 @@ public class ResourceServiceImpl implements ResourceService {
         if (resource == null) {
             return null;
         }
-        return convertToDTO(resource);
+        return convertToDTO(resource, securityUtil.getCurrentUserId());
     }
     
     private ResourceDTO convertToDTO(Resource resource) {
+        return convertToDTO(resource, null);
+    }
+    
+    private ResourceDTO convertToDTO(Resource resource, Long currentUserId) {
         ResourceDTO dto = new ResourceDTO();
         dto.setId(resource.getId());
         dto.setTitle(resource.getTitle());
@@ -86,7 +218,6 @@ public class ResourceServiceImpl implements ResourceService {
         dto.setCategory(resource.getCategory());
         dto.setVersion(resource.getVersion());
         dto.setAuthorId(resource.getAuthorId());
-        dto.setFileUrl(resource.getFileUrl());
         dto.setThumbnailUrl(resource.getThumbnailUrl());
         dto.setDownloadCount(resource.getDownloadCount());
         dto.setLikeCount(resource.getLikeCount());
@@ -107,6 +238,24 @@ public class ResourceServiceImpl implements ResourceService {
         tagWrapper.eq(ResourceTag::getResourceId, resource.getId());
         List<ResourceTag> tags = resourceTagMapper.selectList(tagWrapper);
         dto.setTags(tags.stream().map(ResourceTag::getTagName).collect(Collectors.toList()));
+        
+        // 如果用户已登录，检查是否已点赞和收藏
+        if (currentUserId != null) {
+            // 检查是否已点赞
+            LambdaQueryWrapper<Like> likeWrapper = new LambdaQueryWrapper<>();
+            likeWrapper.eq(Like::getResourceId, resource.getId());
+            likeWrapper.eq(Like::getUserId, currentUserId);
+            dto.setIsLiked(likeMapper.selectOne(likeWrapper) != null);
+            
+            // 检查是否已收藏
+            LambdaQueryWrapper<Favorite> favoriteWrapper = new LambdaQueryWrapper<>();
+            favoriteWrapper.eq(Favorite::getResourceId, resource.getId());
+            favoriteWrapper.eq(Favorite::getUserId, currentUserId);
+            dto.setIsFavorited(favoriteMapper.selectOne(favoriteWrapper) != null);
+        } else {
+            dto.setIsLiked(false);
+            dto.setIsFavorited(false);
+        }
         
         return dto;
     }
@@ -152,8 +301,8 @@ public class ResourceServiceImpl implements ResourceService {
             
             Resource resource = resourceMapper.selectById(resourceId);
             if (resource != null) {
-                resource.setLikeCount(resource.getLikeCount() + 1);
-                resourceMapper.updateById(resource);
+            resource.setLikeCount(resource.getLikeCount() + 1);
+            resourceMapper.updateById(resource);
             }
         }
     }
@@ -167,12 +316,12 @@ public class ResourceServiceImpl implements ResourceService {
         
         Like existingLike = likeMapper.selectOne(wrapper);
         if (existingLike != null) {
-            likeMapper.delete(wrapper);
-            
-            Resource resource = resourceMapper.selectById(resourceId);
+        likeMapper.delete(wrapper);
+        
+        Resource resource = resourceMapper.selectById(resourceId);
             if (resource != null) {
-                resource.setLikeCount(Math.max(0, resource.getLikeCount() - 1));
-                resourceMapper.updateById(resource);
+        resource.setLikeCount(Math.max(0, resource.getLikeCount() - 1));
+        resourceMapper.updateById(resource);
             }
         }
     }
@@ -193,8 +342,8 @@ public class ResourceServiceImpl implements ResourceService {
             
             Resource resource = resourceMapper.selectById(resourceId);
             if (resource != null) {
-                resource.setFavoriteCount(resource.getFavoriteCount() + 1);
-                resourceMapper.updateById(resource);
+            resource.setFavoriteCount(resource.getFavoriteCount() + 1);
+            resourceMapper.updateById(resource);
             }
         }
     }
@@ -208,12 +357,12 @@ public class ResourceServiceImpl implements ResourceService {
         
         Favorite existingFavorite = favoriteMapper.selectOne(wrapper);
         if (existingFavorite != null) {
-            favoriteMapper.delete(wrapper);
-            
-            Resource resource = resourceMapper.selectById(resourceId);
+        favoriteMapper.delete(wrapper);
+        
+        Resource resource = resourceMapper.selectById(resourceId);
             if (resource != null) {
-                resource.setFavoriteCount(Math.max(0, resource.getFavoriteCount() - 1));
-                resourceMapper.updateById(resource);
+        resource.setFavoriteCount(Math.max(0, resource.getFavoriteCount() - 1));
+        resourceMapper.updateById(resource);
             }
         }
     }
@@ -229,8 +378,8 @@ public class ResourceServiceImpl implements ResourceService {
         
         Resource resource = resourceMapper.selectById(resourceId);
         if (resource != null) {
-            resource.setDownloadCount(resource.getDownloadCount() + 1);
-            resourceMapper.updateById(resource);
+        resource.setDownloadCount(resource.getDownloadCount() + 1);
+        resourceMapper.updateById(resource);
         }
     }
 }

@@ -2,13 +2,14 @@ package com.minecraftforum.service;
 
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.minecraftforum.dto.ForumPostDTO;
 import com.minecraftforum.entity.Comment;
 import com.minecraftforum.entity.ForumPost;
 import com.minecraftforum.entity.ForumReply;
 
 public interface ForumService {
-    IPage<ForumPost> getPostList(Page<ForumPost> page, String category, String keyword);
-    ForumPost getPostById(Long id);
+    IPage<ForumPostDTO> getPostList(Page<ForumPost> page, String category, String keyword, String authorKeyword, String sortBy);
+    ForumPostDTO getPostById(Long id);
     ForumPost createPost(ForumPost post);
     ForumPost updatePost(ForumPost post);
     void deletePost(Long id);
@@ -22,6 +23,7 @@ public interface ForumService {
     void likeComment(Long commentId, Long userId);
     void likeReply(Long replyId, Long userId);
 }
+
 
 
 

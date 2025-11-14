@@ -1,4 +1,4 @@
-package com.minecraftforum.config;
+package com.minecraftforum.config.custom.annotations;
 
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;

@@ -7,6 +7,8 @@ import com.minecraftforum.entity.Resource;
 
 public interface ResourceService {
     IPage<ResourceDTO> getResourceList(Page<Resource> page, String category, String keyword, Long authorId);
+    IPage<ResourceDTO> getAllResourceList(Page<Resource> page, String category, String keyword, Long authorId);
+    IPage<ResourceDTO> getAllResourceList(Page<Resource> page, String category, String keyword, Long authorId, String status);
     ResourceDTO getResourceById(Long id);
     Resource createResource(Resource resource);
     Resource updateResource(Resource resource);

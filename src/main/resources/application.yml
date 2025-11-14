@@ -66,4 +66,13 @@ file:
 
 # 论坛配置
 forum:
-  dev-mode: true  # 开发环境模式：true-资源自动审核通过，false-资源需要审核
+  dev-mode: false  # 开发环境模式：true-资源自动审核通过，false-资源需要审核
+  anonymous-access: false  # 是否允许匿名访问首页和论坛：true-允许未登录用户访问，false-需要登录
+
+# 阿里云 OSS 配置
+oss:
+  endpoint: oss-cn-shenzhen.aliyuncs.com  # OSS 端点，根据实际区域修改
+  access-key-id:   # 替换为实际的 AccessKeyId
+  access-key-secret: # 替换为实际的 AccessKeySecret
+  bucket-name: minecraft-forum  # 替换为实际的存储桶名称
+  domain: https://minecraft-forum.oss-cn-shenzhen.aliyuncs.com # 替换为实际的访问域名

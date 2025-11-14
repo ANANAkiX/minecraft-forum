@@ -5,6 +5,7 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.minecraftforum.dto.LoginRequest;
 import com.minecraftforum.dto.RegisterRequest;
 import com.minecraftforum.entity.User;
+import org.springframework.web.multipart.MultipartFile;
 
 public interface UserService {
     User register(RegisterRequest request);
@@ -14,5 +15,6 @@ public interface UserService {
     User updateUser(User user);
     IPage<User> getUserList(Page<User> page, String keyword);
     User updateUserRole(Long userId, String role);
+    String uploadAvatar(MultipartFile file, Long userId);
 }
 

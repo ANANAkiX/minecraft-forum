@@ -12,6 +12,7 @@ import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 @Component
@@ -50,6 +51,30 @@ public class JwtUtil {
                 .compact();
     }
     
+    /**
+     * 生成包含权限列表的Token
+     * @param userId 用户ID
+     * @param username 用户名
+     * @param role 角色
+     * @param permissions 权限代码列表
+     * @return JWT Token
+     */
+    public String generateTokenWithPermissions(Long userId, String username, String role, List<String> permissions) {
+        Map<String, Object> claims = new HashMap<>();
+        claims.put("userId", userId);
+        claims.put("username", username);
+        claims.put("role", role);
+        claims.put("permissions", permissions);
+        
+        return Jwts.builder()
+                .setClaims(claims)
+                .setSubject(username)
+                .setIssuedAt(new Date())
+                .setExpiration(new Date(System.currentTimeMillis() + expiration))
+                .signWith(getSigningKey(), SignatureAlgorithm.HS256)
+                .compact();
+    }
+    
     public Claims parseToken(String token) {
         return Jwts.parser()
                 .verifyWith(getSigningKey())
@@ -71,6 +96,24 @@ public class JwtUtil {
     public String getRoleFromToken(String token) {
         Claims claims = parseToken(token);
         return claims.get("role").toString();
+    }
+    
+    /**
+     * 从Token中获取权限列表
+     * @param token JWT Token
+     * @return 权限代码列表
+     */
+    @SuppressWarnings("unchecked")
+    public List<String> getPermissionsFromToken(String token) {
+        Claims claims = parseToken(token);
+        Object permissionsObj = claims.get("permissions");
+        if (permissionsObj == null) {
+            return List.of();
+        }
+        if (permissionsObj instanceof List) {
+            return (List<String>) permissionsObj;
+        }
+        return List.of();
     }
     
     public boolean isTokenExpired(String token) {

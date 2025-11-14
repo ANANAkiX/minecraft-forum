@@ -1,5 +1,6 @@
 package com.minecraftforum.config;
 
+import com.minecraftforum.config.custom.annotations.AnonymousAccess;
 import org.springframework.aop.support.AopUtils;
 import org.springframework.beans.BeansException;
 import org.springframework.context.ApplicationContext;

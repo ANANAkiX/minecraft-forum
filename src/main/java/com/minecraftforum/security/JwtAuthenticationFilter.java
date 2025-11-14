@@ -1,17 +1,12 @@
 package com.minecraftforum.security;
 
-import com.minecraftforum.config.AnonymousAccess;
-import com.minecraftforum.entity.Permission;
-import com.minecraftforum.service.PermissionService;
+import com.minecraftforum.config.custom.annotations.AnonymousAccess;
 import com.minecraftforum.util.JwtUtil;
-import io.jsonwebtoken.JwtException;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.log4j.Log4j;
-import lombok.extern.slf4j.XSlf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
@@ -25,43 +20,38 @@ import org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandl
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
-import java.util.stream.Collectors;
-
-import static cn.hutool.core.lang.Console.log;
 
 @Component
 @RequiredArgsConstructor
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private final JwtUtil jwtUtil;
-    private final PermissionService permissionService;
 
     @Autowired
     private RequestMappingHandlerMapping handlerMapping;
 
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain) throws ServletException, IOException {
+        // 检查接口是否有 @AnonymousAccess 注解
+        boolean isAnonymousAccess = false;
         HandlerExecutionChain handler;
         try {
             handler = handlerMapping.getHandler(request);
             if (handler != null && handler.getHandler() instanceof HandlerMethod handlerMethod) {
-                // 如果接口或类上有 @AnonymousAccess，直接放行
-                if (handlerMethod.hasMethodAnnotation(AnonymousAccess.class)
-                        || handlerMethod.getBeanType().isAnnotationPresent(AnonymousAccess.class)) {
-                    filterChain.doFilter(request, response);
-                    return;
-                }
+                // 检查接口或类上是否有 @AnonymousAccess 注解
+                isAnonymousAccess = handlerMethod.hasMethodAnnotation(AnonymousAccess.class)
+                        || handlerMethod.getBeanType().isAnnotationPresent(AnonymousAccess.class);
             }
         } catch (Exception ignore) {
         }
 
-
+        // 无论接口是否允许匿名访问，都尝试解析JWT token并设置认证信息
+        // 这样即使接口允许匿名访问，如果用户提供了有效的token，也能正确获取用户权限信息
         String token = getTokenFromRequest(request);
 
         if (StringUtils.hasText(token) && !jwtUtil.isTokenExpired(token)) {
-            //有登录进入这里
+            // 有token，尝试解析并设置认证信息
             try {
                 String username = jwtUtil.getUsernameFromToken(token);
                 String role = jwtUtil.getRoleFromToken(token);
@@ -73,30 +63,22 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 // 添加角色权限（兼容旧系统）
                 authorities.add(new SimpleGrantedAuthority("ROLE_" + role));
                 
-                // 从权限系统加载用户的所有权限，并添加为GrantedAuthority
-                try {
-                    List<Permission> permissions = permissionService.getUserPermissions(userId);
-                    for (Permission permission : permissions) {
-                        // 将权限代码添加为GrantedAuthority
-                        authorities.add(new SimpleGrantedAuthority(permission.getCode()));
-                    }
-                } catch (Exception e) {
-                    // 如果加载权限失败，只使用角色权限
+                // 从JWT Token中提取权限列表，而不是从数据库查询
+                List<String> permissions = jwtUtil.getPermissionsFromToken(token);
+                for (String permissionCode : permissions) {
+                    // 将权限代码添加为GrantedAuthority
+                    authorities.add(new SimpleGrantedAuthority(permissionCode));
                 }
 
                 UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
                     username, null, authorities);
                 SecurityContextHolder.getContext().setAuthentication(authentication);
             } catch (Exception e) {
-                // Token 无效，继续过滤链
+                // Token 无效，继续过滤链（不清除已有的认证信息）
             }
-
-        } else {
-            //没登录进入这里
-            //判断访问的接口是否需要登录才可访问
-
         }
 
+        // 如果接口不允许匿名访问且没有有效的认证信息，Spring Security会在后续的过滤器链中处理
         filterChain.doFilter(request, response);
     }
 

@@ -19,7 +19,6 @@ public class Resource {
     private String category; // PACK, MOD, RESOURCE
     private String version;
     private Long authorId;
-    private String fileUrl;
     private String thumbnailUrl;
     private Integer downloadCount;
     private Integer likeCount;
@@ -28,6 +27,9 @@ public class Resource {
     private LocalDateTime createTime;
     private LocalDateTime updateTime;
 }
+
+
+
 
 
 
