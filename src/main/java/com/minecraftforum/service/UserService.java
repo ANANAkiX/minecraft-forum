@@ -14,7 +14,15 @@ public interface UserService {
     User getUserByUsername(String username);
     User updateUser(User user);
     IPage<User> getUserList(Page<User> page, String keyword);
-    User updateUserRole(Long userId, String role);
     String uploadAvatar(MultipartFile file, Long userId);
+    /**
+     * 管理员创建用户
+     * @param username 用户名
+     * @param password 密码（可选，如果不提供则生成随机密码）
+     * @param nickname 昵称
+     * @param email 邮箱
+     * @param status 状态（0-正常，1-禁用）
+     * @return 创建的用户
+     */
+    User createUser(String username, String password, String nickname, String email, Integer status);
 }
-

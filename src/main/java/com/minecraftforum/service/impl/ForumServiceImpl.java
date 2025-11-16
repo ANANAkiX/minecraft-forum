@@ -8,6 +8,7 @@ import com.minecraftforum.dto.ForumPostDTO;
 import com.minecraftforum.dto.ReplyDTO;
 import com.minecraftforum.entity.*;
 import com.minecraftforum.mapper.*;
+import com.minecraftforum.config.custom.annotations.IndexToElasticsearch;
 import com.minecraftforum.service.ForumService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -154,6 +155,7 @@ public class ForumServiceImpl implements ForumService {
     }
     
     @Override
+    @IndexToElasticsearch(type = IndexToElasticsearch.IndexType.POST)
     public ForumPost createPost(ForumPost post) {
         post.setViewCount(0);
         post.setLikeCount(0);
@@ -166,6 +168,7 @@ public class ForumServiceImpl implements ForumService {
     }
     
     @Override
+    @IndexToElasticsearch(type = IndexToElasticsearch.IndexType.POST)
     public ForumPost updatePost(ForumPost post) {
         post.setUpdateTime(LocalDateTime.now());
         postMapper.updateById(post);
@@ -174,6 +177,7 @@ public class ForumServiceImpl implements ForumService {
     
     @Override
     @Transactional
+    @IndexToElasticsearch(type = IndexToElasticsearch.IndexType.POST, onDelete = true)
     public void deletePost(Long id) {
         ForumPost post = postMapper.selectById(id);
         if (post != null) {

@@ -18,11 +18,19 @@ public class User {
     private String nickname;
     private String email;
     private String avatar;
-    private String role; // USER, ADMIN
     private Integer status; // 0-正常, 1-禁用
     private LocalDateTime createTime;
     private LocalDateTime updateTime;
+    
+    /**
+     * 清除密码信息（用于返回给前端时调用，确保密码不会泄露）
+     */
+    public void clearPassword() {
+        this.password = null;
+    }
 }
+
+
 
 
 

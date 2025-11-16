@@ -19,7 +19,7 @@ import jakarta.servlet.http.HttpServletRequest;
 @RequiredArgsConstructor
 public class SecurityUtil {
     
-    private final JwtUtil jwtUtil;
+    private final TokenUtil tokenUtil;
     private final UserService userService;
     
     /**
@@ -57,8 +57,8 @@ public class SecurityUtil {
         
         // 如果SecurityContext中没有，尝试从Token获取
         String token = getTokenFromCurrentRequest();
-        if (token != null && !jwtUtil.isTokenExpired(token)) {
-            return jwtUtil.getUserIdFromToken(token);
+        if (token != null && tokenUtil.isTokenValid(token)) {
+            return tokenUtil.getUserIdFromToken(token);
         }
         
         return null;
@@ -85,8 +85,8 @@ public class SecurityUtil {
         }
         
         String token = getTokenFromCurrentRequest();
-        if (token != null && !jwtUtil.isTokenExpired(token)) {
-            return jwtUtil.getUsernameFromToken(token);
+        if (token != null && tokenUtil.isTokenValid(token)) {
+            return tokenUtil.getUsernameFromToken(token);
         }
         
         return null;
@@ -117,6 +117,8 @@ public class SecurityUtil {
         return false;
     }
 }
+
+
 
 
 

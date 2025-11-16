@@ -22,6 +22,9 @@ import com.minecraftforum.dto.ForumPostDTO;
 import com.minecraftforum.entity.ForumPost;
 import com.minecraftforum.util.SecurityUtil;
 import com.minecraftforum.util.ApiScanner;
+import com.minecraftforum.util.TokenUtil;
+import com.minecraftforum.event.UserPermissionUpdateEvent;
+import org.springframework.context.ApplicationEventPublisher;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
@@ -58,6 +61,8 @@ public class AdminController {
     private final SecurityUtil securityUtil;
     private final ApplicationContext applicationContext;
     private final ApiScanner apiScanner;
+    private final com.minecraftforum.service.ApiCacheService apiCacheService;
+    private final ApplicationEventPublisher eventPublisher;
 
     /**
      * 检查当前用户是否有指定权限（从JWT中获取权限，不查询数据库）
@@ -107,35 +112,51 @@ public class AdminController {
     }
 
     /**
-     * 更新用户角色
+     * 创建用户
      */
-    @Operation(summary = "更新用户角色", description = "更新用户的角色（USER/ADMIN），需要admin:user:manage权限")
-    @PutMapping("/users/{id}/role")
-    public Result<User> updateUserRole(
-            @Parameter(description = "用户ID", required = true)
-            @PathVariable Long id,
-            @Parameter(description = "角色信息", required = true)
-            @RequestBody Map<String, String> body,
+    @Operation(summary = "创建用户", description = "管理员创建新用户，需要admin:user:create或admin:user:manage权限")
+    @PostMapping("/users")
+    public Result<User> createUser(
+            @Parameter(description = "用户信息", required = true)
+            @RequestBody Map<String, Object> body,
             HttpServletRequest request) {
 
-        // 验证权限：需要admin:user:manage权限
-        if (!checkPermission(request, "admin:user:manage")) {
+        // 验证权限：需要admin:user:create或admin:user:manage权限
+        if (!checkPermission(request, "admin:user:create") && !checkPermission(request, "admin:user:manage")) {
             return Result.error(403, "无权限访问");
         }
 
-        String role = body.get("role");
-        if (role == null || (!role.equals("USER") && !role.equals("ADMIN"))) {
-            return Result.error(400, "角色参数错误");
+        String username = (String) body.get("username");
+        String password = (String) body.get("password"); // 可选
+        String nickname = (String) body.get("nickname");
+        String email = (String) body.get("email");
+        Object statusObj = body.get("status");
+        Integer status = statusObj != null ? ((Number) statusObj).intValue() : 0;
+
+        // 验证必填字段
+        if (username == null || username.isEmpty()) {
+            return Result.error(400, "用户名不能为空");
+        }
+        if (email == null || email.isEmpty()) {
+            return Result.error(400, "邮箱不能为空");
         }
 
-        User updated = userService.updateUserRole(id, role);
-        return Result.success(updated);
+        try {
+            User created = userService.createUser(username, password, nickname, email, status);
+            // 清除密码信息，确保不会返回给前端
+            created.clearPassword();
+            return Result.success(created);
+        } catch (RuntimeException e) {
+            return Result.error(400, e.getMessage());
+        } catch (Exception e) {
+            return Result.error(500, "创建用户失败: " + e.getMessage());
+        }
     }
 
     /**
      * 更新用户信息
      */
-    @Operation(summary = "更新用户信息", description = "更新用户的昵称、邮箱、角色、状态等信息，需要admin:user:update或admin:user:manage权限")
+    @Operation(summary = "更新用户信息", description = "更新用户的昵称、邮箱、状态等信息，需要admin:user:update或admin:user:manage权限")
     @PutMapping("/users/{id}")
     public Result<User> updateUserInfo(
             @Parameter(description = "用户ID", required = true)
@@ -164,14 +185,6 @@ public class AdminController {
             user.setEmail((String) body.get("email"));
         }
 
-        // 更新角色
-        if (body.containsKey("role")) {
-            String role = (String) body.get("role");
-            if (role != null && (role.equals("USER") || role.equals("ADMIN"))) {
-                user.setRole(role);
-            }
-        }
-
         // 更新状态
         if (body.containsKey("status")) {
             Object statusObj = body.get("status");
@@ -181,7 +194,8 @@ public class AdminController {
         }
 
         User updated = userService.updateUser(user);
-        updated.setPassword(null);
+        // 清除密码信息，确保不会返回给前端
+        updated.clearPassword();
         return Result.success(updated);
     }
 
@@ -257,6 +271,9 @@ public class AdminController {
         userRole.setRoleId(roleId);
         userRoleMapper.insert(userRole);
 
+        // 发布权限更新事件，异步处理
+        eventPublisher.publishEvent(new UserPermissionUpdateEvent(this, id));
+
         return Result.success(null);
     }
 
@@ -282,6 +299,9 @@ public class AdminController {
         wrapper.eq(UserRole::getUserId, id);
         wrapper.eq(UserRole::getRoleId, roleId);
         userRoleMapper.delete(wrapper);
+
+        // 发布权限更新事件，异步处理
+        eventPublisher.publishEvent(new UserPermissionUpdateEvent(this, id));
 
         return Result.success(null);
     }
@@ -588,6 +608,9 @@ public class AdminController {
         rolePermission.setCreateTime(LocalDateTime.now());
         rolePermissionMapper.insert(rolePermission);
 
+        // 发布权限更新事件，异步处理（更新所有拥有该角色的用户）
+        eventPublisher.publishEvent(new UserPermissionUpdateEvent(this, id, true));
+
         return Result.success(null);
     }
 
@@ -626,6 +649,9 @@ public class AdminController {
         wrapper.eq(RolePermission::getRoleId, id);
         wrapper.eq(RolePermission::getPermissionCode, permission.getCode());
         rolePermissionMapper.delete(wrapper);
+
+        // 发布权限更新事件，异步处理（更新所有拥有该角色的用户）
+        eventPublisher.publishEvent(new UserPermissionUpdateEvent(this, id, true));
 
         return Result.success(null);
     }
@@ -709,6 +735,9 @@ public class AdminController {
                 deleteWrapper.in(RolePermission::getPermissionCode, toRemove);
                 rolePermissionMapper.delete(deleteWrapper);
             }
+
+            // 发布权限更新事件，异步处理（更新所有拥有该角色的用户）
+            eventPublisher.publishEvent(new UserPermissionUpdateEvent(this, id, true));
 
             return Result.success(null);
         } catch (RuntimeException e) {
@@ -961,7 +990,7 @@ public class AdminController {
         permissionService.deletePermission(id);
         return Result.success(null);
     }
-    
+
     /**
      * 获取所有API信息
      */
@@ -973,7 +1002,8 @@ public class AdminController {
             return Result.error(403, "无权限访问");
         }
         
-        List<ApiScanner.ApiInfo> apiList = apiScanner.scanAllApis(applicationContext);
+        // 从 Redis 缓存获取 API 列表
+        List<ApiScanner.ApiInfo> apiList = apiCacheService.getApiList();
         return Result.success(apiList);
     }
 }

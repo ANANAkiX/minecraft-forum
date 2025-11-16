@@ -14,7 +14,7 @@ import com.minecraftforum.entity.User;
 import com.minecraftforum.mapper.UserMapper;
 import com.minecraftforum.service.PermissionService;
 import com.minecraftforum.service.UserService;
-import com.minecraftforum.util.JwtUtil;
+import com.minecraftforum.util.TokenUtil;
 import com.minecraftforum.util.SnowflakeIdGenerator;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -38,7 +38,7 @@ public class UserServiceImpl implements UserService {
     private final PasswordEncoder passwordEncoder;
     private final OssConfig ossConfig;
     private final SnowflakeIdGenerator idGenerator = SnowflakeIdGenerator.getInstance();
-    private final JwtUtil jwtUtil;
+    private final TokenUtil tokenUtil;
     private final PermissionService permissionService;
     
     @Override
@@ -63,7 +63,6 @@ public class UserServiceImpl implements UserService {
         user.setPassword(passwordEncoder.encode(request.getPassword()));
         user.setEmail(request.getEmail());
         user.setNickname(request.getNickname() != null ? request.getNickname() : request.getUsername());
-        user.setRole("USER");
         user.setStatus(0);
         user.setCreateTime(LocalDateTime.now());
         user.setUpdateTime(LocalDateTime.now());
@@ -92,13 +91,8 @@ public class UserServiceImpl implements UserService {
                 .map(Permission::getCode)
                 .collect(Collectors.toList());
         
-        // 兼容旧的角色判断：如果是ADMIN角色，添加page:admin权限
-        if ("ADMIN".equals(user.getRole()) && !permissionCodes.contains("page:admin")) {
-            permissionCodes.add("page:admin");
-        }
-        
-        // 生成包含权限的Token
-        return jwtUtil.generateTokenWithPermissions(user.getId(), user.getUsername(), user.getRole(), permissionCodes);
+        // 生成包含权限的Token（使用 UUID 和 Redis）
+        return tokenUtil.generateToken(user.getId(), user.getUsername(), permissionCodes);
     }
     
     @Override
@@ -144,16 +138,57 @@ public class UserServiceImpl implements UserService {
     }
     
     @Override
-    public User updateUserRole(Long userId, String role) {
-        User user = userMapper.selectById(userId);
-        if (user == null) {
-            throw new RuntimeException("用户不存在");
+    public User createUser(String username, String password, String nickname, String email, Integer status) {
+        // 检查用户名是否已存在
+        LambdaQueryWrapper<User> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(User::getUsername, username);
+        if (userMapper.selectOne(wrapper) != null) {
+            throw new RuntimeException("用户名已存在");
         }
-        user.setRole(role);
+        
+        // 检查邮箱是否已存在
+        wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(User::getEmail, email);
+        if (userMapper.selectOne(wrapper) != null) {
+            throw new RuntimeException("邮箱已被注册");
+        }
+        
+        // 创建用户
+        User user = new User();
+        user.setUsername(username);
+        
+        // 如果提供了密码则使用，否则生成随机密码
+        if (password != null && !password.isEmpty()) {
+            user.setPassword(passwordEncoder.encode(password));
+        } else {
+            // 生成随机密码（12位，包含大小写字母和数字）
+            String randomPassword = generateRandomPassword(12);
+            user.setPassword(passwordEncoder.encode(randomPassword));
+            log.info("为用户 {} 生成随机密码: {}", username, randomPassword);
+        }
+        
+        user.setEmail(email);
+        user.setNickname(nickname != null && !nickname.isEmpty() ? nickname : username);
+        user.setStatus(status != null ? status : 0);
+        user.setCreateTime(LocalDateTime.now());
         user.setUpdateTime(LocalDateTime.now());
-        userMapper.updateById(user);
-        user.setPassword(null);
+        
+        userMapper.insert(user);
+        user.setPassword(null); // 清除密码信息
         return user;
+    }
+    
+    /**
+     * 生成随机密码
+     */
+    private String generateRandomPassword(int length) {
+        String chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+        StringBuilder password = new StringBuilder();
+        java.util.Random random = new java.util.Random();
+        for (int i = 0; i < length; i++) {
+            password.append(chars.charAt(random.nextInt(chars.length())));
+        }
+        return password.toString();
     }
     
     @Override

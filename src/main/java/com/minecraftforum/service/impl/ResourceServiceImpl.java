@@ -7,6 +7,7 @@ import com.minecraftforum.config.ForumConfig;
 import com.minecraftforum.dto.ResourceDTO;
 import com.minecraftforum.entity.*;
 import com.minecraftforum.mapper.*;
+import com.minecraftforum.config.custom.annotations.IndexToElasticsearch;
 import com.minecraftforum.service.ResourceService;
 import com.minecraftforum.util.SecurityUtil;
 import lombok.RequiredArgsConstructor;
@@ -261,6 +262,7 @@ public class ResourceServiceImpl implements ResourceService {
     }
     
     @Override
+    @IndexToElasticsearch(type = IndexToElasticsearch.IndexType.RESOURCE)
     public Resource createResource(Resource resource) {
         resource.setDownloadCount(0);
         resource.setLikeCount(0);
@@ -274,6 +276,7 @@ public class ResourceServiceImpl implements ResourceService {
     }
     
     @Override
+    @IndexToElasticsearch(type = IndexToElasticsearch.IndexType.RESOURCE)
     public Resource updateResource(Resource resource) {
         resource.setUpdateTime(LocalDateTime.now());
         resourceMapper.updateById(resource);
@@ -281,6 +284,7 @@ public class ResourceServiceImpl implements ResourceService {
     }
     
     @Override
+    @IndexToElasticsearch(type = IndexToElasticsearch.IndexType.RESOURCE, onDelete = true)
     public void deleteResource(Long id) {
         resourceMapper.deleteById(id);
     }

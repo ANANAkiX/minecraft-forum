@@ -50,10 +50,6 @@ public class FileController {
         
         // 获取当前用户ID
         Long userId = securityUtil.getCurrentUserId();
-        if (userId == null) {
-            return Result.error(401, "未登录");
-        }
-        
         try {
             // 上传文件
             SysFile sysFile = fileService.uploadFile(file, resourceId, userId);
@@ -87,10 +83,6 @@ public class FileController {
         
         // 获取当前用户ID
         Long userId = securityUtil.getCurrentUserId();
-        if (userId == null) {
-            return Result.error(401, "未登录");
-        }
-        
         if (files == null || files.length == 0) {
             return Result.error(400, "请至少选择一个文件");
         }
@@ -176,11 +168,6 @@ public class FileController {
     public ResponseEntity<InputStreamResource> downloadFile(
             @Parameter(description = "文件ID", required = true)
             @PathVariable Long id) {
-        
-        // 检查下载权限
-        if (!securityUtil.hasPermission("resource:download")) {
-            return ResponseEntity.status(403).build();
-        }
         
         com.aliyun.oss.OSS ossClient = null;
         InputStream inputStream = null;

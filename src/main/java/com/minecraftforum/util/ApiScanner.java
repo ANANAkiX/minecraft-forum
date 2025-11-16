@@ -1,5 +1,7 @@
 package com.minecraftforum.util;
 
+import com.minecraftforum.config.ApiScannerConfig;
+import com.minecraftforum.config.custom.annotations.AnonymousAccess;
 import io.swagger.v3.oas.annotations.Operation;
 import org.springframework.context.ApplicationContext;
 import org.springframework.stereotype.Component;
@@ -16,9 +18,16 @@ import java.util.*;
 @Component
 public class ApiScanner {
     
+    private final ApiScannerConfig apiScannerConfig;
+    
+    public ApiScanner(ApiScannerConfig apiScannerConfig) {
+        this.apiScannerConfig = apiScannerConfig;
+    }
+    
     /**
      * API信息DTO
      */
+
     public static class ApiInfo {
         private String url;
         private String method;
@@ -94,6 +103,20 @@ public class ApiScanner {
                         continue;
                     }
                     
+                    // 获取简单的类名（不含包名）
+                    String simpleClassName = targetClass.getSimpleName();
+                    
+                    // 检查是否排除该 Controller
+                    if (isExcludedController(simpleClassName)) {
+                        continue;
+                    }
+                    
+                    // 检查类级别的 @AnonymousAccess 注解，如果 excludeFromScan 为 true，则跳过整个类
+                    AnonymousAccess classAnonymousAccess = targetClass.getAnnotation(AnonymousAccess.class);
+                    if (classAnonymousAccess != null && classAnonymousAccess.excludeFromScan()) {
+                        continue;
+                    }
+                    
                     // 获取类级别的RequestMapping注解
                     RequestMapping classMapping = targetClass.getAnnotation(RequestMapping.class);
                     String basePath = classMapping != null ? normalizePath(classMapping.value().length > 0 ? classMapping.value()[0] : "") : "";
@@ -110,10 +133,18 @@ public class ApiScanner {
                             if (!java.lang.reflect.Modifier.isPublic(method.getModifiers())) {
                                 continue;
                             }
-                            // 跳过checkPermission等私有辅助方法
-                            if (method.getName().equals("checkPermission") || method.getName().startsWith("lambda$")) {
+                            
+                            // 检查方法名是否被排除
+                            if (isExcludedMethod(method.getName())) {
                                 continue;
                             }
+                            
+                            // 检查方法级别的 @AnonymousAccess 注解，如果 excludeFromScan 为 true，则跳过该方法
+                            AnonymousAccess methodAnonymousAccess = method.getAnnotation(AnonymousAccess.class);
+                            if (methodAnonymousAccess != null && methodAnonymousAccess.excludeFromScan()) {
+                                continue;
+                            }
+                            
                             ApiInfo apiInfo = extractApiInfo(method, basePath);
                             if (apiInfo != null) {
                                 apiList.add(apiInfo);
@@ -226,6 +257,75 @@ public class ApiScanner {
             path = path.substring(0, path.length() - 1);
         }
         return path;
+    }
+    
+    /**
+     * 检查 Controller 是否被排除
+     */
+    private boolean isExcludedController(String controllerName) {
+        if (apiScannerConfig == null || apiScannerConfig.getExclude() == null) {
+            return false;
+        }
+        
+        List<String> excludedControllers = apiScannerConfig.getExclude().getControllers();
+        if (excludedControllers == null || excludedControllers.isEmpty()) {
+            return false;
+        }
+        
+        for (String pattern : excludedControllers) {
+            if (matchesPattern(controllerName, pattern)) {
+                return true;
+            }
+        }
+        
+        return false;
+    }
+    
+    /**
+     * 检查方法是否被排除
+     */
+    private boolean isExcludedMethod(String methodName) {
+        if (apiScannerConfig == null || apiScannerConfig.getExclude() == null) {
+            return false;
+        }
+        
+        List<String> excludedMethods = apiScannerConfig.getExclude().getMethods();
+        if (excludedMethods == null || excludedMethods.isEmpty()) {
+            return false;
+        }
+        
+        for (String pattern : excludedMethods) {
+            if (matchesPattern(methodName, pattern)) {
+                return true;
+            }
+        }
+        
+        return false;
+    }
+    
+    /**
+     * 通配符匹配
+     * 支持 * 通配符（匹配任意字符）
+     * 例如：matchesPattern("AdminController", "*Controller") -> true
+     *      matchesPattern("getUserInfo", "get*") -> true
+     *      matchesPattern("getUserInfo", "*Info") -> true
+     */
+    private boolean matchesPattern(String text, String pattern) {
+        if (text == null || pattern == null) {
+            return false;
+        }
+        
+        // 如果模式不包含通配符，直接比较
+        if (!pattern.contains("*")) {
+            return text.equals(pattern);
+        }
+        
+        // 将通配符模式转换为正则表达式
+        String regex = pattern
+                .replace(".", "\\.")
+                .replace("*", ".*");
+        
+        return text.matches(regex);
     }
 }
 

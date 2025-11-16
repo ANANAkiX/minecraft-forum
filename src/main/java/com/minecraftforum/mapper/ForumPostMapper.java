@@ -13,3 +13,5 @@ public interface ForumPostMapper extends BaseMapper<ForumPost> {
 
 
 
+
+

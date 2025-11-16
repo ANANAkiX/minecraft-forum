@@ -36,11 +36,10 @@ public class JwtUtil {
         }
     }
     
-    public String generateToken(Long userId, String username, String role) {
+    public String generateToken(Long userId, String username) {
         Map<String, Object> claims = new HashMap<>();
         claims.put("userId", userId);
         claims.put("username", username);
-        claims.put("role", role);
         
         return Jwts.builder()
                 .setClaims(claims)
@@ -55,15 +54,13 @@ public class JwtUtil {
      * 生成包含权限列表的Token
      * @param userId 用户ID
      * @param username 用户名
-     * @param role 角色
      * @param permissions 权限代码列表
      * @return JWT Token
      */
-    public String generateTokenWithPermissions(Long userId, String username, String role, List<String> permissions) {
+    public String generateTokenWithPermissions(Long userId, String username, List<String> permissions) {
         Map<String, Object> claims = new HashMap<>();
         claims.put("userId", userId);
         claims.put("username", username);
-        claims.put("role", role);
         claims.put("permissions", permissions);
         
         return Jwts.builder()
@@ -93,9 +90,16 @@ public class JwtUtil {
         return claims.getSubject();
     }
     
+    /**
+     * 从Token中获取角色（已废弃，角色现在通过user_role表管理）
+     * 保留此方法以保持向后兼容
+     * @deprecated 角色现在通过user_role表管理，不再存储在JWT中
+     */
+    @Deprecated
     public String getRoleFromToken(String token) {
         Claims claims = parseToken(token);
-        return claims.get("role").toString();
+        Object role = claims.get("role");
+        return role != null ? role.toString() : null;
     }
     
     /**

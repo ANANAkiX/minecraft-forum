@@ -1,7 +1,7 @@
 package com.minecraftforum.security;
 
 import com.minecraftforum.config.custom.annotations.AnonymousAccess;
-import com.minecraftforum.util.JwtUtil;
+import com.minecraftforum.util.TokenUtil;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -26,7 +26,7 @@ import java.util.List;
 @RequiredArgsConstructor
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
-    private final JwtUtil jwtUtil;
+    private final TokenUtil tokenUtil;
 
     @Autowired
     private RequestMappingHandlerMapping handlerMapping;
@@ -46,33 +46,31 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         } catch (Exception ignore) {
         }
 
-        // 无论接口是否允许匿名访问，都尝试解析JWT token并设置认证信息
+        // 无论接口是否允许匿名访问，都尝试解析Token并设置认证信息
         // 这样即使接口允许匿名访问，如果用户提供了有效的token，也能正确获取用户权限信息
         String token = getTokenFromRequest(request);
 
-        if (StringUtils.hasText(token) && !jwtUtil.isTokenExpired(token)) {
+        if (StringUtils.hasText(token) && tokenUtil.isTokenValid(token)) {
             // 有token，尝试解析并设置认证信息
             try {
-                String username = jwtUtil.getUsernameFromToken(token);
-                String role = jwtUtil.getRoleFromToken(token);
-                Long userId = jwtUtil.getUserIdFromToken(token);
+                String username = tokenUtil.getUsernameFromToken(token);
+                Long userId = tokenUtil.getUserIdFromToken(token);
 
-                // 构建权限列表
-                List<SimpleGrantedAuthority> authorities = new ArrayList<>();
-                
-                // 添加角色权限（兼容旧系统）
-                authorities.add(new SimpleGrantedAuthority("ROLE_" + role));
-                
-                // 从JWT Token中提取权限列表，而不是从数据库查询
-                List<String> permissions = jwtUtil.getPermissionsFromToken(token);
-                for (String permissionCode : permissions) {
-                    // 将权限代码添加为GrantedAuthority
-                    authorities.add(new SimpleGrantedAuthority(permissionCode));
+                if (username != null && userId != null) {
+                    // 构建权限列表
+                    List<SimpleGrantedAuthority> authorities = new ArrayList<>();
+                    
+                    // 从 Redis 中提取权限列表
+                    List<String> permissions = tokenUtil.getPermissionsFromToken(token);
+                    for (String permissionCode : permissions) {
+                        // 将权限代码添加为GrantedAuthority
+                        authorities.add(new SimpleGrantedAuthority(permissionCode));
+                    }
+
+                    UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
+                        username, null, authorities);
+                    SecurityContextHolder.getContext().setAuthentication(authentication);
                 }
-
-                UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
-                    username, null, authorities);
-                SecurityContextHolder.getContext().setAuthentication(authentication);
             } catch (Exception e) {
                 // Token 无效，继续过滤链（不清除已有的认证信息）
             }

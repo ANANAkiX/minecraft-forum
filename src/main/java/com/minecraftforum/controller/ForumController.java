@@ -99,10 +99,6 @@ public class ForumController {
             @RequestBody ForumPost post) {
         
         Long userId = securityUtil.getCurrentUserId();
-        if (userId == null) {
-            return Result.error(401, "未登录");
-        }
-
         post.setAuthorId(userId);
         ForumPost created = forumService.createPost(post);
         return Result.success(created);
@@ -120,10 +116,6 @@ public class ForumController {
             @RequestBody ForumPost post) {
         
         Long userId = securityUtil.getCurrentUserId();
-        if (userId == null) {
-            return Result.error(401, "未登录");
-        }
-
         ForumPostDTO existing = forumService.getPostById(id);
         if (existing == null) {
             return Result.error(404, "帖子不存在");
@@ -147,10 +139,6 @@ public class ForumController {
             @PathVariable Long id) {
         
         Long userId = securityUtil.getCurrentUserId();
-        if (userId == null) {
-            return Result.error(401, "未登录");
-        }
-
         ForumPostDTO post = forumService.getPostById(id);
         if (post == null) {
             return Result.error(404, "帖子不存在");
@@ -173,10 +161,6 @@ public class ForumController {
             @PathVariable Long id) {
         
         Long userId = securityUtil.getCurrentUserId();
-        if (userId == null) {
-            return Result.error(401, "未登录");
-        }
-        
         forumService.likePost(id, userId);
         return Result.success(null);
     }
@@ -191,10 +175,6 @@ public class ForumController {
             @PathVariable Long id) {
         
         Long userId = securityUtil.getCurrentUserId();
-        if (userId == null) {
-            return Result.error(401, "未登录");
-        }
-        
         forumService.unlikePost(id, userId);
         return Result.success(null);
     }
@@ -211,10 +191,6 @@ public class ForumController {
             @RequestBody Map<String, String> body) {
         
         Long userId = securityUtil.getCurrentUserId();
-        if (userId == null) {
-            return Result.error(401, "未登录");
-        }
-        
         String content = body.get("content");
         Comment comment = forumService.createComment(postId, userId, content);
         return Result.success(comment);
@@ -230,9 +206,6 @@ public class ForumController {
             @PathVariable Long id) {
         
         Long userId = securityUtil.getCurrentUserId();
-        if (userId == null) {
-            return Result.error(401, "未登录");
-        }
 
         // 检查权限：只有评论作者可以删除评论
         Comment comment = commentMapper.selectById(id);
@@ -261,10 +234,6 @@ public class ForumController {
             @RequestBody Map<String, Object> body) {
         
         Long userId = securityUtil.getCurrentUserId();
-        if (userId == null) {
-            return Result.error(401, "未登录");
-        }
-        
         String content = (String) body.get("content");
         Long targetUserId = body.get("targetUserId") != null ?
                 Long.valueOf(body.get("targetUserId").toString()) : null;
@@ -285,9 +254,6 @@ public class ForumController {
             @PathVariable Long id) {
         
         Long userId = securityUtil.getCurrentUserId();
-        if (userId == null) {
-            return Result.error(401, "未登录");
-        }
 
         // 检查权限：只有回复作者可以删除回复
         ForumReply reply = replyMapper.selectById(id);
@@ -315,10 +281,6 @@ public class ForumController {
             @PathVariable Long id) {
         
         Long userId = securityUtil.getCurrentUserId();
-        if (userId == null) {
-            return Result.error(401, "未登录");
-        }
-        
         forumService.likeComment(id, userId);
         return Result.success(null);
     }
@@ -333,10 +295,6 @@ public class ForumController {
             @PathVariable Long id) {
         
         Long userId = securityUtil.getCurrentUserId();
-        if (userId == null) {
-            return Result.error(401, "未登录");
-        }
-        
         forumService.likeReply(id, userId);
         return Result.success(null);
     }
@@ -351,10 +309,6 @@ public class ForumController {
             @PathVariable Long id) {
         
         Long userId = securityUtil.getCurrentUserId();
-        if (userId == null) {
-            return Result.error(401, "未登录");
-        }
-        
         forumService.unlikeComment(id, userId);
         return Result.success(null);
     }
@@ -369,10 +323,6 @@ public class ForumController {
             @PathVariable Long id) {
         
         Long userId = securityUtil.getCurrentUserId();
-        if (userId == null) {
-            return Result.error(401, "未登录");
-        }
-        
         forumService.unlikeReply(id, userId);
         return Result.success(null);
     }

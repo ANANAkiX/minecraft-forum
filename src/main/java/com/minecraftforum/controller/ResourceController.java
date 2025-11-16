@@ -104,10 +104,6 @@ public class ResourceController {
             @RequestParam(value = "tags", required = false) String tags) {
         
         Long userId = securityUtil.getCurrentUserId();
-        if (userId == null) {
-            return Result.error(401, "未登录");
-        }
-
         Resource resource = new Resource();
         resource.setTitle(title);
         resource.setDescription(description);
@@ -168,10 +164,6 @@ public class ResourceController {
             @RequestBody Resource resource) {
         
         Long userId = securityUtil.getCurrentUserId();
-        if (userId == null) {
-            return Result.error(401, "未登录");
-        }
-
         ResourceDTO existing = resourceService.getResourceById(id);
         if (existing == null) {
             return Result.error(404, "资源不存在");
@@ -196,10 +188,6 @@ public class ResourceController {
             @PathVariable Long id) {
         
         Long userId = securityUtil.getCurrentUserId();
-        if (userId == null) {
-            return Result.error(401, "未登录");
-        }
-
         ResourceDTO resource = resourceService.getResourceById(id);
         if (resource == null) {
             return Result.error(404, "资源不存在");
@@ -222,10 +210,6 @@ public class ResourceController {
             @PathVariable Long id) {
         
         Long userId = securityUtil.getCurrentUserId();
-        if (userId == null) {
-            return Result.error(401, "未登录");
-        }
-        
         resourceService.likeResource(id, userId);
         return Result.success(null);
     }
@@ -240,10 +224,6 @@ public class ResourceController {
             @PathVariable Long id) {
         
         Long userId = securityUtil.getCurrentUserId();
-        if (userId == null) {
-            return Result.error(401, "未登录");
-        }
-        
         resourceService.unlikeResource(id, userId);
         return Result.success(null);
     }
@@ -258,10 +238,6 @@ public class ResourceController {
             @PathVariable Long id) {
         
         Long userId = securityUtil.getCurrentUserId();
-        if (userId == null) {
-            return Result.error(401, "未登录");
-        }
-        
         resourceService.favoriteResource(id, userId);
         return Result.success(null);
     }
@@ -276,10 +252,6 @@ public class ResourceController {
             @PathVariable Long id) {
         
         Long userId = securityUtil.getCurrentUserId();
-        if (userId == null) {
-            return Result.error(401, "未登录");
-        }
-        
         resourceService.unfavoriteResource(id, userId);
         return Result.success(null);
     }
@@ -294,15 +266,6 @@ public class ResourceController {
             @PathVariable Long id) {
         
         Long userId = securityUtil.getCurrentUserId();
-        if (userId == null) {
-            return Result.error(401, "未登录");
-        }
-        
-        // 检查下载权限
-        if (!securityUtil.hasPermission("resource:download")) {
-            return Result.error(403, "暂无下载权限，请联系管理员");
-        }
-        
         resourceService.downloadResource(id, userId);
         return Result.success(null);
     }

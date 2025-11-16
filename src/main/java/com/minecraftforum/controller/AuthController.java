@@ -8,12 +8,14 @@ import com.minecraftforum.entity.Permission;
 import com.minecraftforum.entity.User;
 import com.minecraftforum.service.PermissionService;
 import com.minecraftforum.service.UserService;
-import com.minecraftforum.util.JwtUtil;
+import com.minecraftforum.util.TokenUtil;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.HashMap;
@@ -32,8 +34,27 @@ import java.util.stream.Collectors;
 public class AuthController {
     
     private final UserService userService;
-    private final JwtUtil jwtUtil;
+    private final TokenUtil tokenUtil;
     private final PermissionService permissionService;
+    
+    /**
+     * 从请求中获取当前Token
+     */
+    private String getCurrentToken() {
+        try {
+            jakarta.servlet.http.HttpServletRequest request = 
+                ((org.springframework.web.context.request.ServletRequestAttributes) 
+                    org.springframework.web.context.request.RequestContextHolder.getRequestAttributes())
+                    .getRequest();
+            String bearerToken = request.getHeader("Authorization");
+            if (StringUtils.hasText(bearerToken) && bearerToken.startsWith("Bearer ")) {
+                return bearerToken.substring(7);
+            }
+        } catch (Exception e) {
+            // 忽略异常
+        }
+        return null;
+    }
     
     /**
      * 用户注册
@@ -46,19 +67,17 @@ public class AuthController {
             @Valid @RequestBody RegisterRequest request) {
         User user = userService.register(request);
         
+        // 清除密码信息，确保不会返回给前端
+        user.clearPassword();
+        
         // 获取用户的所有权限（新注册用户可能没有权限，但为了统一处理，仍然获取）
         List<Permission> permissions = permissionService.getUserPermissions(user.getId());
         List<String> permissionCodes = permissions.stream()
                 .map(Permission::getCode)
                 .collect(Collectors.toList());
         
-        // 兼容旧的角色判断：如果是ADMIN角色，添加page:admin权限
-        if ("ADMIN".equals(user.getRole()) && !permissionCodes.contains("page:admin")) {
-            permissionCodes.add("page:admin");
-        }
-        
-        // 生成包含权限的Token
-        String token = jwtUtil.generateTokenWithPermissions(user.getId(), user.getUsername(), user.getRole(), permissionCodes);
+        // 生成包含权限的Token（使用 UUID 和 Redis）
+        String token = tokenUtil.generateToken(user.getId(), user.getUsername(), permissionCodes);
         
         Map<String, Object> data = new HashMap<>();
         data.put("token", token);
@@ -78,6 +97,9 @@ public class AuthController {
             @Valid @RequestBody LoginRequest request) {
         String token = userService.login(request);
         User user = userService.getUserByUsername(request.getUsername());
+        
+        // 清除密码信息，确保不会返回给前端
+        user.clearPassword();
         
         Map<String, Object> data = new HashMap<>();
         data.put("token", token);
@@ -111,19 +133,27 @@ public class AuthController {
             return Result.error(403, "账号已被禁用");
         }
         
+        // 清除密码信息，确保不会返回给前端
+        user.clearPassword();
+        
         // 获取用户的所有权限
         List<Permission> permissions = permissionService.getUserPermissions(user.getId());
         List<String> permissionCodes = permissions.stream()
                 .map(Permission::getCode)
                 .collect(Collectors.toList());
         
-        // 兼容旧的角色判断：如果是ADMIN角色，添加page:admin权限
-        if ("ADMIN".equals(user.getRole()) && !permissionCodes.contains("page:admin")) {
-            permissionCodes.add("page:admin");
-        }
+        // 获取当前请求的 Token（UUID）
+        String currentToken = getCurrentToken();
+        String newToken;
         
-        // 生成包含最新权限的Token
-        String newToken = jwtUtil.generateTokenWithPermissions(user.getId(), user.getUsername(), user.getRole(), permissionCodes);
+        // 如果当前Token有效，更新其权限（不生成新Token，保持UUID不变）
+        if (currentToken != null && tokenUtil.isTokenValid(currentToken)) {
+            tokenUtil.updateTokenPermissions(currentToken, permissionCodes);
+            newToken = currentToken;
+        } else {
+            // 如果当前Token无效，生成新Token
+            newToken = tokenUtil.generateToken(user.getId(), user.getUsername(), permissionCodes);
+        }
         
         Map<String, Object> data = new HashMap<>();
         data.put("token", newToken);

@@ -42,17 +42,13 @@ public class UserController {
     @GetMapping("/info")
     public Result<Map<String, Object>> getUserInfo() {
         Long userId = securityUtil.getCurrentUserId();
-        if (userId == null) {
-            return Result.error(401, "未登录");
-        }
-        
         User user = userService.getUserById(userId);
         if (user == null) {
             return Result.error(404, "用户不存在");
         }
         
-        // 清除密码信息
-        user.setPassword(null);
+        // 清除密码信息，确保不会返回给前端
+        user.clearPassword();
         
         // 获取用户的所有权限
         List<Permission> permissions = permissionService.getUserPermissions(userId);
@@ -67,7 +63,6 @@ public class UserController {
         result.put("nickname", user.getNickname());
         result.put("email", user.getEmail());
         result.put("avatar", user.getAvatar());
-        result.put("role", user.getRole());
         result.put("status", user.getStatus());
         result.put("createTime", user.getCreateTime());
         result.put("updateTime", user.getUpdateTime());
@@ -85,10 +80,6 @@ public class UserController {
             @Parameter(description = "用户信息", required = true)
             @RequestBody User user) {
         Long userId = securityUtil.getCurrentUserId();
-        if (userId == null) {
-            return Result.error(401, "未登录");
-        }
-        
         User existingUser = userService.getUserById(userId);
         if (existingUser == null) {
             return Result.error(404, "用户不存在");
@@ -98,7 +89,8 @@ public class UserController {
         existingUser.setEmail(user.getEmail());
         
         User updatedUser = userService.updateUser(existingUser);
-        updatedUser.setPassword(null);
+        // 清除密码信息，确保不会返回给前端
+        updatedUser.clearPassword();
         return Result.success(updatedUser);
     }
     
@@ -111,10 +103,6 @@ public class UserController {
             @Parameter(description = "头像文件", required = true)
             @RequestParam("file") MultipartFile file) {
         Long userId = securityUtil.getCurrentUserId();
-        if (userId == null) {
-            return Result.error(401, "未登录");
-        }
-        
         // 验证文件
         if (file == null || file.isEmpty()) {
             return Result.error(400, "文件不能为空");
