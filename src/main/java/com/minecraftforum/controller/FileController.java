@@ -162,8 +162,9 @@ public class FileController {
     
     /**
      * 下载文件
+     * 权限检查由 PermissionInterceptor 统一处理
      */
-    @Operation(summary = "下载文件", description = "从OSS下载文件，需要resource:download权限")
+    @Operation(summary = "下载文件", description = "从OSS下载文件，需要resource:download权限（由PermissionInterceptor统一检查）")
     @GetMapping("/{id}/download")
     public ResponseEntity<InputStreamResource> downloadFile(
             @Parameter(description = "文件ID", required = true)

@@ -11,7 +11,7 @@
  Target Server Version : 80018 (8.0.18)
  File Encoding         : 65001
 
- Date: 15/11/2025 02:54:59
+ Date: 17/11/2025 05:11:18
 */
 
 SET NAMES utf8mb4;
@@ -101,7 +101,7 @@ CREATE TABLE `download_log`  (
   PRIMARY KEY (`id`) USING BTREE,
   INDEX `idx_user_id`(`user_id` ASC) USING BTREE,
   INDEX `idx_resource_id`(`resource_id` ASC) USING BTREE
-) ENGINE = InnoDB AUTO_INCREMENT = 29 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_ci COMMENT = '下载日志表' ROW_FORMAT = Dynamic;
+) ENGINE = InnoDB AUTO_INCREMENT = 33 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_ci COMMENT = '下载日志表' ROW_FORMAT = Dynamic;
 
 -- ----------------------------
 -- Records of download_log
@@ -134,6 +134,10 @@ INSERT INTO `download_log` VALUES (25, 5, 18, '2025-11-14 12:39:28');
 INSERT INTO `download_log` VALUES (26, 2, 18, '2025-11-15 02:41:39');
 INSERT INTO `download_log` VALUES (27, 2, 18, '2025-11-15 02:42:43');
 INSERT INTO `download_log` VALUES (28, 2, 18, '2025-11-15 02:42:45');
+INSERT INTO `download_log` VALUES (29, 2, 18, '2025-11-16 12:50:41');
+INSERT INTO `download_log` VALUES (30, 2, 12, '2025-11-17 04:35:43');
+INSERT INTO `download_log` VALUES (31, 2, 12, '2025-11-17 04:36:09');
+INSERT INTO `download_log` VALUES (32, 2, 12, '2025-11-17 04:36:15');
 
 -- ----------------------------
 -- Table structure for favorite
@@ -190,8 +194,8 @@ CREATE TABLE `forum_post`  (
 -- ----------------------------
 INSERT INTO `forum_post` VALUES (1, '测试测试', '测试乘势而上', 'TUTORIAL', 2, 8, 0, 1, 'DELETED', '2025-11-03 02:28:56', '2025-11-03 02:28:56');
 INSERT INTO `forum_post` VALUES (2, '彩色', '彩色是', 'HELP', 2, 9, 0, 2, 'DELETED', '2025-11-03 02:29:39', '2025-11-03 02:29:39');
-INSERT INTO `forum_post` VALUES (3, '测试帖子', '测试求助', 'SHARE', 5, 167, 2, 2, 'NORMAL', '2025-11-14 03:48:10', '2025-11-14 09:11:14');
-INSERT INTO `forum_post` VALUES (4, '测试新帖子', '阿萨大大大萨达萨达萨达是', 'TUTORIAL', 2, 66, 1, 14, 'NORMAL', '2025-11-14 20:21:24', '2025-11-14 20:21:24');
+INSERT INTO `forum_post` VALUES (3, '测试帖子', '测试求助', 'SHARE', 5, 176, 2, 2, 'NORMAL', '2025-11-14 03:48:10', '2025-11-14 09:11:14');
+INSERT INTO `forum_post` VALUES (4, '测试新帖子', '阿萨大大大萨达萨达萨达是', 'TUTORIAL', 2, 74, 2, 14, 'NORMAL', '2025-11-14 20:21:24', '2025-11-16 15:25:40');
 
 -- ----------------------------
 -- Table structure for forum_reply
@@ -245,7 +249,7 @@ CREATE TABLE `like`  (
   INDEX `idx_user_post`(`user_id` ASC, `post_id` ASC) USING BTREE,
   INDEX `idx_user_comment`(`user_id` ASC, `comment_id` ASC) USING BTREE,
   INDEX `idx_user_reply`(`user_id` ASC, `reply_id` ASC) USING BTREE
-) ENGINE = InnoDB AUTO_INCREMENT = 22 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_ci COMMENT = '点赞表' ROW_FORMAT = Dynamic;
+) ENGINE = InnoDB AUTO_INCREMENT = 24 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_ci COMMENT = '点赞表' ROW_FORMAT = Dynamic;
 
 -- ----------------------------
 -- Records of like
@@ -253,7 +257,6 @@ CREATE TABLE `like`  (
 INSERT INTO `like` VALUES (1, 5, 11, NULL, NULL, NULL, '2025-11-14 09:10:41');
 INSERT INTO `like` VALUES (3, 5, 12, NULL, NULL, NULL, '2025-11-14 12:05:55');
 INSERT INTO `like` VALUES (5, 2, NULL, 3, NULL, NULL, '2025-11-14 12:07:03');
-INSERT INTO `like` VALUES (6, 2, 12, NULL, NULL, NULL, '2025-11-14 12:07:06');
 INSERT INTO `like` VALUES (8, 2, NULL, NULL, 5, NULL, '2025-11-14 20:20:12');
 INSERT INTO `like` VALUES (14, 5, NULL, 4, NULL, NULL, '2025-11-14 21:00:26');
 INSERT INTO `like` VALUES (15, 5, 18, NULL, NULL, NULL, '2025-11-14 21:00:35');
@@ -263,6 +266,8 @@ INSERT INTO `like` VALUES (18, 5, NULL, 3, NULL, NULL, '2025-11-14 21:26:56');
 INSERT INTO `like` VALUES (19, 5, NULL, NULL, 16, NULL, '2025-11-14 21:28:42');
 INSERT INTO `like` VALUES (20, 5, NULL, NULL, 18, NULL, '2025-11-14 21:59:22');
 INSERT INTO `like` VALUES (21, 2, NULL, NULL, 19, NULL, '2025-11-15 02:44:30');
+INSERT INTO `like` VALUES (22, 2, NULL, 4, NULL, NULL, '2025-11-16 15:55:47');
+INSERT INTO `like` VALUES (23, 2, 12, NULL, NULL, NULL, '2025-11-17 04:36:08');
 
 -- ----------------------------
 -- Table structure for permission
@@ -289,7 +294,7 @@ CREATE TABLE `permission`  (
   INDEX `idx_parent_id`(`parent_id` ASC) USING BTREE,
   INDEX `idx_apiurl`(`apiurl` ASC) USING BTREE,
   INDEX `idx_router`(`router` ASC) USING BTREE
-) ENGINE = InnoDB AUTO_INCREMENT = 56 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_ci COMMENT = '权限表' ROW_FORMAT = Dynamic;
+) ENGINE = InnoDB AUTO_INCREMENT = 61 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_ci COMMENT = '权限表' ROW_FORMAT = Dynamic;
 
 -- ----------------------------
 -- Records of permission
@@ -313,15 +318,15 @@ INSERT INTO `permission` VALUES (16, 'post:delete', '删除帖子', 'ACTION', '�
 INSERT INTO `permission` VALUES (17, 'comment:create', '创建评论', 'ACTION', '为帖子创建评论，发布一条评论 需要comment:create权限', NULL, '/api/forum/posts/{postId}/comments', 'POST', 0, 30, 1, '2025-11-13 06:42:17', '2025-11-15 00:48:12');
 INSERT INTO `permission` VALUES (18, 'comment:update', '修改评论', 'ACTION', '修改评论', NULL, NULL, NULL, 0, 31, 1, '2025-11-13 06:42:17', '2025-11-13 06:42:17');
 INSERT INTO `permission` VALUES (19, 'comment:delete', '删除评论', 'ACTION', '删除评论，只有评论作者可以删除（级联删除所有子回复）', NULL, '/api/forum/comments/{id}', 'DELETE', 0, 32, 1, '2025-11-13 06:42:17', '2025-11-15 00:48:51');
-INSERT INTO `permission` VALUES (23, 'admin:user:manage', '用户管理', 'PAGE', '管理用户（包含所有用户管理操作）', '', '', '', 0, 50, 1, '2025-11-13 06:42:17', '2025-11-15 00:59:46');
+INSERT INTO `permission` VALUES (23, 'admin:user:manage', '后台管理-用户管理', 'PAGE', '管理用户（包含所有用户管理操作）', '', '', '', 0, 50, 1, '2025-11-13 06:42:17', '2025-11-16 12:28:35');
 INSERT INTO `permission` VALUES (24, 'admin:user:read', '查看用户列表', 'ACTION', '分页获取用户列表，支持关键词搜索，需要admin:user:read', NULL, '/api/admin/users', 'GET', 0, 51, 1, '2025-11-13 06:42:17', '2025-11-15 00:23:57');
 INSERT INTO `permission` VALUES (25, 'admin:user:update', '修改用户', 'ACTION', '更新用户的昵称、邮箱、角色、状态等信息，需要admin:user:update或admin:user:manage权限', NULL, '/api/admin/users/{id}', 'PUT', 0, 52, 1, '2025-11-13 06:42:17', '2025-11-15 01:50:51');
 INSERT INTO `permission` VALUES (26, 'admin:user:delete', '删除用户', 'ACTION', '删除用户', NULL, NULL, NULL, 0, 53, 1, '2025-11-13 06:42:17', '2025-11-13 06:42:17');
-INSERT INTO `permission` VALUES (27, 'admin:resource:manage', '资源管理', 'PAGE', '管理资源', '', '', '', 0, 54, 1, '2025-11-13 06:42:17', '2025-11-15 00:59:39');
-INSERT INTO `permission` VALUES (28, 'admin:post:manage', '帖子管理', 'PAGE', '管理帖子', '', '', '', 0, 55, 1, '2025-11-13 06:42:17', '2025-11-15 00:59:35');
-INSERT INTO `permission` VALUES (29, 'admin:category:manage', '分类管理', 'PAGE', '管理分类配置', '', '', '', 0, 56, 1, '2025-11-13 06:42:17', '2025-11-15 00:59:31');
-INSERT INTO `permission` VALUES (30, 'admin:permission:manage', '权限管理', 'PAGE', '管理权限', '', '', '', 0, 57, 1, '2025-11-13 06:42:17', '2025-11-15 00:59:22');
-INSERT INTO `permission` VALUES (31, 'admin:role:manage', '角色管理', 'PAGE', '访问管理角色页面', NULL, '', '', 0, 58, 1, '2025-11-13 06:42:17', '2025-11-15 00:57:52');
+INSERT INTO `permission` VALUES (27, 'admin:resource:manage', '后台管理-资源管理', 'PAGE', '管理资源', '', '', '', 0, 54, 1, '2025-11-13 06:42:17', '2025-11-16 12:28:39');
+INSERT INTO `permission` VALUES (28, 'admin:post:manage', '后台管理-帖子管理', 'PAGE', '管理帖子', '', '', '', 0, 55, 1, '2025-11-13 06:42:17', '2025-11-16 12:28:48');
+INSERT INTO `permission` VALUES (29, 'admin:category:manage', '后台管理-分类管理', 'PAGE', '管理分类配置', '', '', '', 0, 56, 1, '2025-11-13 06:42:17', '2025-11-16 12:28:52');
+INSERT INTO `permission` VALUES (30, 'admin:permission:manage', '后台管理-权限管理', 'PAGE', '管理权限', '', '', '', 0, 57, 1, '2025-11-13 06:42:17', '2025-11-16 12:28:55');
+INSERT INTO `permission` VALUES (31, 'admin:role:manage', '后台管理-角色管理', 'PAGE', '访问管理角色页面', NULL, '', '', 0, 58, 1, '2025-11-13 06:42:17', '2025-11-16 12:28:59');
 INSERT INTO `permission` VALUES (32, 'admin:role:read', '查看角色', 'ACTION', '获取角色列表，需要admin:role:read 或者 admin:role:manage权限 ', '', '/api/admin/roles', 'GET', 0, 59, 1, '2025-11-13 06:42:17', '2025-11-15 00:56:59');
 INSERT INTO `permission` VALUES (33, 'admin:role:create', '创建角色', 'ACTION', '创建新角色，需要admin:role:create或admin:role:manage权限', NULL, '/api/admin/roles', 'POST', 0, 60, 1, '2025-11-13 06:42:17', '2025-11-15 00:54:30');
 INSERT INTO `permission` VALUES (34, 'admin:role:update', '修改角色', 'ACTION', '修改角色显示名称等 代码不可修改，需要admin:role:update:role:manage权限', '', '/api/admin/roles/{id}', 'PUT', 0, 61, 1, '2025-11-13 06:42:17', '2025-11-15 00:54:16');
@@ -332,18 +337,23 @@ INSERT INTO `permission` VALUES (38, 'admin:permission:read', '获取所有权�
 INSERT INTO `permission` VALUES (41, 'admin:permission:create', '添加权限', 'ACTION', '创建新权限，需要admin:permission:create或admin:permission:manage权限', NULL, '/api/admin/permissions', 'POST', 0, 0, 1, '2025-11-15 01:46:40', '2025-11-15 01:49:36');
 INSERT INTO `permission` VALUES (42, 'admin:permission:delete', '删除一个权限', 'ACTION', '删除权限，需要admin:permission:delete或admin:permission:manage权限', '', '/api/admin/permissions/{id}', 'DELETE', 0, 0, 1, '2025-11-15 01:47:43', '2025-11-15 01:47:43');
 INSERT INTO `permission` VALUES (43, 'admin:permission:update', '编辑权限', 'ACTION', '更新权限信息，需要admin:permission:update或admin:permission:manage权限', '', '/api/admin/permissions/{id}', 'PUT', 0, 0, 1, '2025-11-15 01:48:38', '2025-11-15 01:48:38');
-INSERT INTO `permission` VALUES (44, 'admin:category:read', '获取分类配置的数据', 'ACTION', '', '', '', '', 0, 0, 1, '2025-11-15 01:53:11', '2025-11-15 01:53:11');
-INSERT INTO `permission` VALUES (45, 'admin:category:create', '添加分类', 'ACTION', '', '', '', '', 0, 0, 1, '2025-11-15 01:54:51', '2025-11-15 01:54:51');
-INSERT INTO `permission` VALUES (46, 'admin:category:update', '编辑分类', 'ACTION', '', '', '', '', 0, 0, 1, '2025-11-15 01:55:11', '2025-11-15 01:55:11');
-INSERT INTO `permission` VALUES (47, 'admin:category:delete', '删除分类', 'ACTION', '', '', '', '', 0, 0, 1, '2025-11-15 01:55:25', '2025-11-15 01:55:25');
-INSERT INTO `permission` VALUES (48, 'admin:post:read', '获取帖子数据', 'ACTION', '', '', '', '', 0, 0, 1, '2025-11-15 01:57:35', '2025-11-15 01:57:35');
-INSERT INTO `permission` VALUES (49, 'admin:post:update', '修改帖子', 'ACTION', '', '', '', '', 0, 0, 1, '2025-11-15 01:58:47', '2025-11-15 01:58:47');
-INSERT INTO `permission` VALUES (50, 'admin:post:delete', '删除一篇帖子', 'ACTION', '', '', '', '', 0, 0, 1, '2025-11-15 02:00:01', '2025-11-15 02:00:01');
-INSERT INTO `permission` VALUES (51, 'admin:post:create', '发布帖子', 'ACTION', '', '', '', '', 0, 0, 1, '2025-11-15 02:01:56', '2025-11-15 02:01:56');
-INSERT INTO `permission` VALUES (52, 'admin:resource:read', '获取资源管理的数据', 'ACTION', '', '', '', '', 0, 0, 1, '2025-11-15 02:02:46', '2025-11-15 02:02:46');
-INSERT INTO `permission` VALUES (53, 'admin:resource:update', '修改资源', 'ACTION', '', '', '', '', 0, 0, 1, '2025-11-15 02:03:29', '2025-11-15 02:03:29');
-INSERT INTO `permission` VALUES (54, 'admin:resource:delete', '删除资源', 'ACTION', '', '', '', '', 0, 0, 1, '2025-11-15 02:04:15', '2025-11-15 02:04:15');
-INSERT INTO `permission` VALUES (55, 'admin:user:create', '创建用户', 'ACTION', '', '', '', '', 0, 0, 1, '2025-11-15 02:05:56', '2025-11-15 02:05:56');
+INSERT INTO `permission` VALUES (44, 'admin:category:read', '获取分类配置的数据', 'ACTION', '获取所有分类配置，包括已禁用的，需要admin:category:manage权限', '', '/api/category-config', 'GET', 0, 0, 1, '2025-11-15 01:53:11', '2025-11-16 10:50:58');
+INSERT INTO `permission` VALUES (45, 'admin:category:create', '添加分类', 'ACTION', '创建新的分类配置，需要admin:category:manage权限', '', '/api/category-config', 'POST', 0, 0, 1, '2025-11-15 01:54:51', '2025-11-16 10:51:11');
+INSERT INTO `permission` VALUES (46, 'admin:category:update', '编辑分类', 'ACTION', '更新分类配置信息，需要admin:category:manage权限', '', '/api/category-config/{id}', 'PUT', 0, 0, 1, '2025-11-15 01:55:11', '2025-11-16 10:51:22');
+INSERT INTO `permission` VALUES (47, 'admin:category:delete', '删除分类', 'ACTION', '删除分类配置，需要admin:category:manage权限', '', '/api/category-config/{id}', 'DELETE', 0, 0, 1, '2025-11-15 01:55:25', '2025-11-16 10:51:28');
+INSERT INTO `permission` VALUES (48, 'admin:post:read', '获取帖子数据', 'ACTION', '分页获取帖子列表，支持按分类、关键词、作者筛选和排序', '', '/api/forum/posts', 'GET', 0, 0, 1, '2025-11-15 01:57:35', '2025-11-16 10:52:09');
+INSERT INTO `permission` VALUES (49, 'admin:post:update', '修改帖子', 'ACTION', '管理员更新帖子信息，需要admin:post:manage权限', '', '/api/admin/posts/{id}', 'PUT', 0, 0, 1, '2025-11-15 01:58:47', '2025-11-16 10:52:36');
+INSERT INTO `permission` VALUES (50, 'admin:post:delete', '删除一篇帖子', 'ACTION', '删除帖子，只能删除自己发布的帖子', '', '/api/forum/posts/{id}', 'DELETE', 0, 0, 1, '2025-11-15 02:00:01', '2025-11-16 10:52:43');
+INSERT INTO `permission` VALUES (51, 'admin:post:create', '发布帖子', 'ACTION', '发布新帖子，需要post:create权限', '', '/api/forum/posts', 'POST', 0, 0, 1, '2025-11-15 02:01:56', '2025-11-16 10:53:12');
+INSERT INTO `permission` VALUES (52, 'admin:resource:read', '获取资源管理的数据', 'ACTION', '管理员获取所有资源列表，包括待审核、已通过、已拒绝的资源，需要admin:resource:manage权限', '', '/api/admin/resources', 'GET', 0, 0, 1, '2025-11-15 02:02:46', '2025-11-16 10:53:50');
+INSERT INTO `permission` VALUES (53, 'admin:resource:update', '修改资源', 'ACTION', '管理员更新资源信息，需要admin:resource:manage权限', '', '/api/admin/resources/{id}', 'PUT', 0, 0, 1, '2025-11-15 02:03:29', '2025-11-16 10:54:02');
+INSERT INTO `permission` VALUES (54, 'admin:resource:delete', '删除资源', 'ACTION', '删除资源，只能删除自己创建的资源', '', '/api/resource/{id}', 'DELETE', 0, 0, 1, '2025-11-15 02:04:15', '2025-11-16 10:54:29');
+INSERT INTO `permission` VALUES (55, 'admin:user:create', '创建用户', 'ACTION', '管理员创建新用户，需要admin:user:create或admin:user:manage权限', '', '/api/admin/users', 'POST', 0, 0, 1, '2025-11-15 02:05:56', '2025-11-16 10:57:19');
+INSERT INTO `permission` VALUES (56, 'user:info', '获取当前用户的信息', 'ACTION', '获取当前登录用户的详细信息，包括权限列表', '', '/api/user/info', 'GET', 0, 0, 1, '2025-11-16 11:31:45', '2025-11-16 11:31:45');
+INSERT INTO `permission` VALUES (57, 'elasticsearch:search', '分词搜索', 'ACTION', '搜索帖子和资源，需要 elasticsearch:search 权限', '', '/api/search', 'GET', 0, 0, 1, '2025-11-16 14:10:25', '2025-11-16 14:10:25');
+INSERT INTO `permission` VALUES (58, 'admin:file:manage', '后台管理-文件管理', 'PAGE', '访问后台管理中的文件管理', '', '', '', 0, 0, 1, '2025-11-17 04:58:02', '2025-11-17 05:00:20');
+INSERT INTO `permission` VALUES (59, 'admin:file:read', '获取文件列表', 'ACTION', '分页获取文件列表，支持按文件名搜索和资源ID筛选', '', '/api/admin/files', 'GET', 0, 0, 1, '2025-11-17 05:02:37', '2025-11-17 05:02:37');
+INSERT INTO `permission` VALUES (60, 'admin:file:delete', '删除文件', 'ACTION', '删除文件，需要admin:file:delete或权限', '', '/api/admin/files/{id}', 'DELETE', 0, 0, 1, '2025-11-17 05:03:04', '2025-11-17 05:03:04');
 
 -- ----------------------------
 -- Table structure for resource
@@ -381,9 +391,9 @@ INSERT INTO `resource` VALUES (8, '测试1', '测试1', '上传一下啊啊图�
 INSERT INTO `resource` VALUES (9, '测试上传文件', '测试上传文件', '==>  Preparing: INSERT INTO sys_file ( original_name, file_name, file_url, file_size, file_type, create_user, update_user, create_time, update_time ) VALUES ( ?, ?, ?, ?, ?, ?, ?, ?, ? )\r\n==> Parameters: 抢关注.txt(String), 247494615693922304.txt(String), https://minecraft-forum.oss-cn-shenzhen.aliyuncs.com/files/247494615693922304.txt(String), 755(Long), text/plain(String), 5(Long), 5(Long), 2025-11-14T06:55:15.180590100(LocalDateTime), 2025-11-14T06:55:15.180590100(LocalDateTime)\r\n<==    Updates: 1\r\nClosing non transactional SqlSession [org.apache.ibatis.session.defaults.DefaultSqlSession@597d1984]\r\n2025-11-14 06:55:15 [http-nio-8080-exec-6] INFO  com.minecraftforum.service.impl.FileServiceImpl - 文件上传成功: originalName=抢关注.txt, fileName=247494615693922304.txt, fileUrl=https://minecraft-forum.oss-cn-shenzhen.aliyuncs.com/files/247494615693922304.txt\r\n2025-11-14 06:55:15 [http-nio-8080-exec-2] ERROR com.minecraftforum.common.GlobalExceptionHandler - 系统异常\r\norg.springframework.web.bind.MissingServletRequestParameterException: Required request parameter \'title\' for method parameter type String is not present', 'MOD', '111', 5, 'https://minecraft-forum.oss-cn-shenzhen.aliyuncs.com/files/247495410921377792.txt', NULL, 2, 0, 0, 'APPROVED', '2025-11-14 06:58:25', '2025-11-14 12:05:29');
 INSERT INTO `resource` VALUES (10, '测试资源上传', '测试资源上传', '测试资源上传测试资源上传测试资源上传测试资源上传', 'MOD', '111', 5, NULL, NULL, 7, 0, 1, 'APPROVED', '2025-11-14 07:08:49', '2025-11-14 12:05:27');
 INSERT INTO `resource` VALUES (11, '测试多文件上传', '测试多文件上传', '测试多文件上传测试多文件上传测试多文件上传测试多文件上传测试多文件上传 测试非作者更新', 'PACK', '1111', 5, NULL, NULL, 7, 1, 1, 'APPROVED', '2025-11-14 08:42:19', '2025-11-15 00:37:57');
-INSERT INTO `resource` VALUES (12, '测试发布的图片', '测试发布的图片', '![image.png](https://minecraft-forum.oss-cn-shenzhen.aliyuncs.com/files/247529587314135040.png)\n测试修改', 'RESOURCE', '1111', 5, NULL, NULL, 0, 2, 2, 'APPROVED', '2025-11-14 09:15:30', '2025-11-14 12:05:23');
+INSERT INTO `resource` VALUES (12, '测试发布的图片', '测试发布的图片', '![image.png](https://minecraft-forum.oss-cn-shenzhen.aliyuncs.com/files/247529587314135040.png)\n测试修改', 'RESOURCE', '1111', 5, NULL, NULL, 3, 2, 2, 'APPROVED', '2025-11-14 09:15:30', '2025-11-14 12:05:23');
 INSERT INTO `resource` VALUES (17, '测试新版发布资源', '测试新版发布资源测试新版发布资源', '测试新版发布资源测试新版发布资源测试新版发布资源测试新版发布资源', 'RESOURCE', '测试新版发布资源测试新版发布资源', 2, NULL, NULL, 0, 0, 0, 'APPROVED', '2025-11-14 12:21:24', '2025-11-15 00:41:19');
-INSERT INTO `resource` VALUES (18, '测试新版发布资源测试新版发布源', '测试新版发布资源测试新版发布资源测试新版发布资源测试新版发布资源', '测试新版发布资源测试新版发布资源测试新版发布资源', 'MOD', '测试新版发布资源测试新版发布资源', 2, NULL, NULL, 5, 1, 1, 'APPROVED', '2025-11-14 12:22:35', '2025-11-15 00:42:05');
+INSERT INTO `resource` VALUES (18, '测试新版发布资源测试新版发布源', '测试新版发布资源测试新版发布资源测试新版发布资源测试新版发布资源', '测试新版发布资源测试新版发布资源测试新版发布资源', 'MOD', '测试新版发布资源测试新版发布资源', 2, NULL, NULL, 6, 1, 1, 'APPROVED', '2025-11-14 12:22:35', '2025-11-16 15:25:52');
 
 -- ----------------------------
 -- Table structure for resource_tag
@@ -451,7 +461,7 @@ CREATE TABLE `role`  (
   UNIQUE INDEX `name`(`name` ASC) USING BTREE,
   UNIQUE INDEX `code`(`code` ASC) USING BTREE,
   INDEX `idx_code`(`code` ASC) USING BTREE
-) ENGINE = InnoDB AUTO_INCREMENT = 5 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_ci COMMENT = '角色表' ROW_FORMAT = Dynamic;
+) ENGINE = InnoDB AUTO_INCREMENT = 6 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_ci COMMENT = '角色表' ROW_FORMAT = Dynamic;
 
 -- ----------------------------
 -- Records of role
@@ -459,6 +469,7 @@ CREATE TABLE `role`  (
 INSERT INTO `role` VALUES (1, '普通用户', 'USER', '普通用户角色', 1, '2025-11-13 06:42:17', '2025-11-15 00:41:12');
 INSERT INTO `role` VALUES (2, '管理员', 'ADMIN', '管理员角色', 1, '2025-11-13 06:42:17', '2025-11-13 06:42:17');
 INSERT INTO `role` VALUES (4, '测试角色', 'TESTROLE', '', 1, '2025-11-14 12:10:28', '2025-11-14 12:10:28');
+INSERT INTO `role` VALUES (5, '测试新权限控制', 'TESTNEWROLE', '测试新权限控制', 1, '2025-11-16 10:59:05', '2025-11-16 10:59:05');
 
 -- ----------------------------
 -- Table structure for role_permission
@@ -474,7 +485,7 @@ CREATE TABLE `role_permission`  (
   UNIQUE INDEX `uk_role_permission`(`role_id` ASC, `permission_code` ASC) USING BTREE,
   INDEX `idx_role_id`(`role_id` ASC) USING BTREE,
   INDEX `idx_permission_code`(`permission_code` ASC) USING BTREE
-) ENGINE = InnoDB AUTO_INCREMENT = 266 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_ci COMMENT = '角色权限表' ROW_FORMAT = Dynamic;
+) ENGINE = InnoDB AUTO_INCREMENT = 303 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_ci COMMENT = '角色权限表' ROW_FORMAT = Dynamic;
 
 -- ----------------------------
 -- Records of role_permission
@@ -528,14 +539,44 @@ INSERT INTO `role_permission` VALUES (254, 2, 'admin:resource:delete', '删除�
 INSERT INTO `role_permission` VALUES (255, 2, 'admin:resource:update', '修改资源', '2025-11-15 02:04:37');
 INSERT INTO `role_permission` VALUES (256, 2, 'admin:user:create', '创建用户', '2025-11-15 02:06:03');
 INSERT INTO `role_permission` VALUES (257, 2, 'admin:post:create', '发布帖子', '2025-11-15 02:29:18');
-INSERT INTO `role_permission` VALUES (258, 2, 'resource:download', '下载文件', '2025-11-15 02:42:36');
 INSERT INTO `role_permission` VALUES (259, 4, 'page:upload', '访问上传资源', '2025-11-15 02:53:38');
-INSERT INTO `role_permission` VALUES (260, 4, 'page:home:pack', '访问首页-整合包', '2025-11-15 02:53:38');
-INSERT INTO `role_permission` VALUES (261, 4, 'page:home:resource', '访问首页-资源包', '2025-11-15 02:53:38');
-INSERT INTO `role_permission` VALUES (262, 4, 'page:home:mod', '访问首页-MOD', '2025-11-15 02:53:38');
 INSERT INTO `role_permission` VALUES (263, 4, 'page:home', '访问首页', '2025-11-15 02:53:38');
-INSERT INTO `role_permission` VALUES (264, 4, 'page:home:all', '访问首页-全部', '2025-11-15 02:53:38');
-INSERT INTO `role_permission` VALUES (265, 4, 'page:forum', '访问论坛', '2025-11-15 02:53:38');
+INSERT INTO `role_permission` VALUES (266, 5, 'page:upload', '访问上传资源', '2025-11-16 11:00:06');
+INSERT INTO `role_permission` VALUES (267, 5, 'admin:permission:manage', '权限管理', '2025-11-16 11:00:06');
+INSERT INTO `role_permission` VALUES (268, 5, 'page:admin', '访问后台管理', '2025-11-16 11:00:06');
+INSERT INTO `role_permission` VALUES (269, 5, 'page:home', '访问首页', '2025-11-16 11:00:06');
+INSERT INTO `role_permission` VALUES (270, 5, 'admin:resource:manage', '资源管理', '2025-11-16 11:00:06');
+INSERT INTO `role_permission` VALUES (271, 5, 'admin:post:manage', '帖子管理', '2025-11-16 11:00:06');
+INSERT INTO `role_permission` VALUES (272, 5, 'page:forum', '访问论坛', '2025-11-16 11:00:06');
+INSERT INTO `role_permission` VALUES (273, 5, 'admin:category:manage', '分类管理', '2025-11-16 11:00:06');
+INSERT INTO `role_permission` VALUES (274, 5, 'admin:role:manage', '角色管理', '2025-11-16 11:00:06');
+INSERT INTO `role_permission` VALUES (275, 5, 'user:info', '获取当前用户的信息', '2025-11-16 11:31:56');
+INSERT INTO `role_permission` VALUES (276, 1, 'user:info', '获取当前用户的信息', '2025-11-16 11:31:56');
+INSERT INTO `role_permission` VALUES (277, 2, 'user:info', '获取当前用户的信息', '2025-11-16 11:31:56');
+INSERT INTO `role_permission` VALUES (278, 4, 'user:info', '获取当前用户的信息', '2025-11-16 11:31:56');
+INSERT INTO `role_permission` VALUES (279, 4, 'admin:resource:read', '获取资源管理的数据', '2025-11-16 12:24:53');
+INSERT INTO `role_permission` VALUES (280, 4, 'admin:post:read', '获取帖子数据', '2025-11-16 12:26:31');
+INSERT INTO `role_permission` VALUES (281, 4, 'resource:read', '查看资源', '2025-11-16 12:26:49');
+INSERT INTO `role_permission` VALUES (282, 4, 'page:home:pack', '访问首页-整合包', '2025-11-16 12:27:14');
+INSERT INTO `role_permission` VALUES (283, 4, 'page:home:resource', '访问首页-资源包', '2025-11-16 12:27:14');
+INSERT INTO `role_permission` VALUES (284, 4, 'page:home:mod', '访问首页-MOD', '2025-11-16 12:27:14');
+INSERT INTO `role_permission` VALUES (285, 4, 'page:home:all', '访问首页-全部', '2025-11-16 12:27:14');
+INSERT INTO `role_permission` VALUES (286, 4, 'page:admin', '访问后台管理', '2025-11-16 12:27:35');
+INSERT INTO `role_permission` VALUES (287, 4, 'admin:user:manage', '后台管理-用户管理', '2025-11-16 12:29:21');
+INSERT INTO `role_permission` VALUES (288, 4, 'admin:user:read', '查看用户列表', '2025-11-16 12:29:35');
+INSERT INTO `role_permission` VALUES (289, 4, 'admin:user:create', '创建用户', '2025-11-16 12:29:40');
+INSERT INTO `role_permission` VALUES (290, 4, 'admin:user:update', '修改用户', '2025-11-16 12:29:44');
+INSERT INTO `role_permission` VALUES (291, 4, 'admin:user:delete', '删除用户', '2025-11-16 12:29:52');
+INSERT INTO `role_permission` VALUES (292, 4, 'admin:role:read', '查看角色', '2025-11-16 12:30:28');
+INSERT INTO `role_permission` VALUES (293, 4, 'admin:role:manage', '后台管理-角色管理', '2025-11-16 12:30:28');
+INSERT INTO `role_permission` VALUES (294, 4, 'admin:role:create', '创建角色', '2025-11-16 12:30:46');
+INSERT INTO `role_permission` VALUES (295, 4, 'admin:role:update', '修改角色', '2025-11-16 12:30:46');
+INSERT INTO `role_permission` VALUES (296, 4, 'admin:role:delete', '删除角色', '2025-11-16 12:30:46');
+INSERT INTO `role_permission` VALUES (297, 2, 'elasticsearch:search', '分词搜索', '2025-11-16 14:10:59');
+INSERT INTO `role_permission` VALUES (298, 2, 'admin:file:manage', '后台管理-文件管理', '2025-11-17 04:58:24');
+INSERT INTO `role_permission` VALUES (299, 2, 'admin:file:read', '获取文件列表', '2025-11-17 05:03:14');
+INSERT INTO `role_permission` VALUES (300, 2, 'admin:file:delete', '删除文件', '2025-11-17 05:03:14');
+INSERT INTO `role_permission` VALUES (302, 2, 'resource:download', '下载文件', '2025-11-17 05:10:15');
 
 -- ----------------------------
 -- Table structure for sys_file
@@ -562,8 +603,8 @@ CREATE TABLE `sys_file`  (
 -- ----------------------------
 -- Records of sys_file
 -- ----------------------------
-INSERT INTO `sys_file` VALUES (2, 9, '抢关注.txt', '247495410921377792.txt', 'https://minecraft-forum.oss-cn-shenzhen.aliyuncs.com/files/247495410921377792.txt', 755, 'text/plain', 5, 5, '2025-11-14 06:58:25', '2025-11-14 07:07:57');
-INSERT INTO `sys_file` VALUES (3, 10, '抢关注.txt', '247498030738182144.txt', 'https://minecraft-forum.oss-cn-shenzhen.aliyuncs.com/files/247498030738182144.txt', 755, 'text/plain', 5, 5, '2025-11-14 07:08:49', '2025-11-14 07:08:49');
+INSERT INTO `sys_file` VALUES (2, 9, '抢关注.txt', '247495410921377792.txt', 'https://minecraft-forum.oss-cn-shenzhen.aliyuncs.com/files/2474915410921377792.txt', 755, 'text/plain', 5, 5, '2025-11-14 06:58:25', '2025-11-17 04:56:58');
+INSERT INTO `sys_file` VALUES (3, 10, '抢关注.txt', '247498030738182144.txt', 'https://minecraft-forum.oss-cn-shenzhen.aliyuncs.com/files/2474198030738182144.txt', 755, 'text/plain', 5, 5, '2025-11-14 07:08:49', '2025-11-17 04:57:00');
 INSERT INTO `sys_file` VALUES (4, 11, '抢关注.txt', '247521564927594496.txt', 'https://minecraft-forum.oss-cn-shenzhen.aliyuncs.com/files/247521564927594496.txt', 755, 'text/plain', 5, 5, '2025-11-14 08:42:21', '2025-11-14 08:42:21');
 INSERT INTO `sys_file` VALUES (5, 11, 'app.so', '247521568232706048.so', 'https://minecraft-forum.oss-cn-shenzhen.aliyuncs.com/files/247521568232706048.so', 7668640, 'application/octet-stream', 5, 5, '2025-11-14 08:42:22', '2025-11-14 08:42:22');
 INSERT INTO `sys_file` VALUES (7, 12, 'mrzh_250918213951_449.jpg', '247529914272714752.jpg', 'https://minecraft-forum.oss-cn-shenzhen.aliyuncs.com/files/247529914272714752.jpg', 701953, 'image/jpeg', 5, 5, '2025-11-14 09:15:31', '2025-11-14 09:15:31');
@@ -585,7 +626,6 @@ CREATE TABLE `user`  (
   `nickname` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NULL DEFAULT NULL COMMENT '昵称',
   `email` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL COMMENT '邮箱',
   `avatar` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NULL DEFAULT NULL COMMENT '头像URL',
-  `role` varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NULL DEFAULT 'USER' COMMENT '角色：USER, ADMIN',
   `status` int(11) NULL DEFAULT 0 COMMENT '状态：0-正常，1-禁用',
   `create_time` datetime NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '创建时间',
   `update_time` datetime NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
@@ -594,13 +634,14 @@ CREATE TABLE `user`  (
   UNIQUE INDEX `email`(`email` ASC) USING BTREE,
   INDEX `idx_username`(`username` ASC) USING BTREE,
   INDEX `idx_email`(`email` ASC) USING BTREE
-) ENGINE = InnoDB AUTO_INCREMENT = 6 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_ci COMMENT = '用户表' ROW_FORMAT = Dynamic;
+) ENGINE = InnoDB AUTO_INCREMENT = 7 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_ci COMMENT = '用户表' ROW_FORMAT = Dynamic;
 
 -- ----------------------------
 -- Records of user
 -- ----------------------------
-INSERT INTO `user` VALUES (2, 'admin', '$2a$10$MJzs2BhCv20zspZyhfJmce5SPrx5lErB1ojCHTM.bIPV1B8jW7DcO', '安安安安', '1066863570@qq.com', 'https://minecraft-forum.oss-cn-shenzhen.aliyuncs.com/avatar/247578013976367104.jpg', 'ADMIN', 0, '2025-11-13 06:17:31', '2025-11-14 22:50:10');
-INSERT INTO `user` VALUES (5, '测试1', '$2a$10$.i06GsDKs0sA1V02r2Dmgebc7QOUjETYziP/Bh4bLmbqbyUXEK2Ae', '测试用户', 'aa@q.com', NULL, 'USER', 0, '2025-11-13 06:20:18', '2025-11-15 01:19:58');
+INSERT INTO `user` VALUES (2, 'admin', '$2a$10$MJzs2BhCv20zspZyhfJmce5SPrx5lErB1ojCHTM.bIPV1B8jW7DcO', '安安安安', '1066863570@qq.com', 'https://minecraft-forum.oss-cn-shenzhen.aliyuncs.com/avatar/247578013976367104.jpg', 0, '2025-11-13 06:17:31', '2025-11-14 22:50:10');
+INSERT INTO `user` VALUES (5, '测试1', '$2a$10$.i06GsDKs0sA1V02r2Dmgebc7QOUjETYziP/Bh4bLmbqbyUXEK2Ae', '测试用户', 'aa@q.com', NULL, 0, '2025-11-13 06:20:18', '2025-11-15 01:19:58');
+INSERT INTO `user` VALUES (6, '测试新权限控制', '$2a$10$0eNjwyZUNgoj9WQp5LRHlOmlC89XHMhgV9n5OVnUmLmSsxrbvbSoa', '123456', 'chen_a_nan1@qq.com', NULL, 0, '2025-11-16 10:58:35', '2025-11-16 10:58:35');
 
 -- ----------------------------
 -- Table structure for user_role
@@ -615,12 +656,13 @@ CREATE TABLE `user_role`  (
   UNIQUE INDEX `uk_user_role`(`user_id` ASC, `role_id` ASC) USING BTREE,
   INDEX `idx_user_id`(`user_id` ASC) USING BTREE,
   INDEX `idx_role_id`(`role_id` ASC) USING BTREE
-) ENGINE = InnoDB AUTO_INCREMENT = 7 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_ci COMMENT = '用户角色关联表' ROW_FORMAT = Dynamic;
+) ENGINE = InnoDB AUTO_INCREMENT = 8 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_ci COMMENT = '用户角色关联表' ROW_FORMAT = Dynamic;
 
 -- ----------------------------
 -- Records of user_role
 -- ----------------------------
 INSERT INTO `user_role` VALUES (1, 2, 2, '2025-11-13 06:44:05');
 INSERT INTO `user_role` VALUES (6, 5, 4, '2025-11-14 12:10:42');
+INSERT INTO `user_role` VALUES (7, 6, 5, '2025-11-16 11:01:10');
 
 SET FOREIGN_KEY_CHECKS = 1;
