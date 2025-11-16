@@ -49,6 +49,7 @@ public class SearchServiceImpl implements SearchService {
     private final ResourceMapper resourceMapper;
     private final SysFileMapper sysFileMapper;
     private final UserMapper userMapper;
+    private final com.minecraftforum.config.ElasticsearchHealthChecker healthChecker;
     
     private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
     private static final String INDEX_NAME = "minecraft_forum_search";
@@ -81,22 +82,35 @@ public class SearchServiceImpl implements SearchService {
             return new ArrayList<>();
         }
         
+        // 检查 Elasticsearch 是否可用
+        if (!healthChecker.isAvailable()) {
+            log.debug("Elasticsearch 不可用，返回空搜索结果");
+            // 触发一次连接检查（异步）
+            healthChecker.checkConnection();
+            return new ArrayList<>();
+        }
+        
         try {
             // 确保索引存在
             ensureIndexExists();
             
-            // 构建高亮字段
+            // 构建高亮字段，使用带 class 的 span 标签包裹关键词
+            // 前端通过 class 选择器统一设置样式，后端只负责标记
+            // 不设置内联样式，完全由前端控制
+            String highlightPreTag = "<span class=\"search-highlight\">";
+            String highlightPostTag = "</span>";
+            
             Highlight highlight = Highlight.of(h -> h
                     .fields("title", HighlightField.of(f -> f
-                            .preTags("<em>")
-                            .postTags("</em>")))
+                            .preTags(highlightPreTag)
+                            .postTags(highlightPostTag)))
                     .fields("content", HighlightField.of(f -> f
-                            .preTags("<em>")
-                            .postTags("</em>")
+                            .preTags(highlightPreTag)
+                            .postTags(highlightPostTag)
                             .fragmentSize(200)))
                     .fields("fileNames", HighlightField.of(f -> f
-                            .preTags("<em>")
-                            .postTags("</em>")))
+                            .preTags(highlightPreTag)
+                            .postTags(highlightPostTag)))
             );
             
             // 构建查询
@@ -192,13 +206,22 @@ public class SearchServiceImpl implements SearchService {
             
             return results;
         } catch (Exception e) {
-            log.error("搜索失败: keyword={}", keyword, e);
+            log.warn("搜索失败: keyword={}, error={}", keyword, e.getMessage());
+            // 标记连接失败，触发重连检查
+            healthChecker.checkConnection();
+            // 返回空结果，不影响主流程
             return new ArrayList<>();
         }
     }
     
     @Override
     public void indexPost(Long postId) {
+        // 检查 Elasticsearch 是否可用
+        if (!healthChecker.isAvailable()) {
+            log.debug("Elasticsearch 不可用，跳过索引操作: postId={}", postId);
+            return;
+        }
+        
         try {
             ForumPost post = forumPostMapper.selectById(postId);
             if (post == null) {
@@ -232,12 +255,20 @@ public class SearchServiceImpl implements SearchService {
             elasticsearchClient.index(indexRequest);
             log.info("索引帖子成功: postId={}", postId);
         } catch (Exception e) {
-            log.error("索引帖子失败: postId={}", postId, e);
+            log.warn("索引帖子失败: postId={}, error={}", postId, e.getMessage());
+            // 标记连接失败，触发重连检查
+            healthChecker.checkConnection();
         }
     }
     
     @Override
     public void indexResource(Long resourceId) {
+        // 检查 Elasticsearch 是否可用
+        if (!healthChecker.isAvailable()) {
+            log.debug("Elasticsearch 不可用，跳过索引操作: resourceId={}", resourceId);
+            return;
+        }
+        
         try {
             Resource resource = resourceMapper.selectById(resourceId);
             if (resource == null) {
@@ -294,12 +325,20 @@ public class SearchServiceImpl implements SearchService {
             elasticsearchClient.index(indexRequest);
             log.info("索引资源成功: resourceId={}", resourceId);
         } catch (Exception e) {
-            log.error("索引资源失败: resourceId={}", resourceId, e);
+            log.warn("索引资源失败: resourceId={}, error={}", resourceId, e.getMessage());
+            // 标记连接失败，触发重连检查
+            healthChecker.checkConnection();
         }
     }
     
     @Override
     public void deletePostIndex(Long postId) {
+        // 检查 Elasticsearch 是否可用
+        if (!healthChecker.isAvailable()) {
+            log.debug("Elasticsearch 不可用，跳过删除索引操作: postId={}", postId);
+            return;
+        }
+        
         try {
             elasticsearchClient.delete(d -> d
                     .index(INDEX_NAME)
@@ -307,12 +346,20 @@ public class SearchServiceImpl implements SearchService {
             );
             log.info("删除帖子索引成功: postId={}", postId);
         } catch (Exception e) {
-            log.error("删除帖子索引失败: postId={}", postId, e);
+            log.warn("删除帖子索引失败: postId={}, error={}", postId, e.getMessage());
+            // 标记连接失败，触发重连检查
+            healthChecker.checkConnection();
         }
     }
     
     @Override
     public void deleteResourceIndex(Long resourceId) {
+        // 检查 Elasticsearch 是否可用
+        if (!healthChecker.isAvailable()) {
+            log.debug("Elasticsearch 不可用，跳过删除索引操作: resourceId={}", resourceId);
+            return;
+        }
+        
         try {
             elasticsearchClient.delete(d -> d
                     .index(INDEX_NAME)
@@ -320,12 +367,20 @@ public class SearchServiceImpl implements SearchService {
             );
             log.info("删除资源索引成功: resourceId={}", resourceId);
         } catch (Exception e) {
-            log.error("删除资源索引失败: resourceId={}", resourceId, e);
+            log.warn("删除资源索引失败: resourceId={}, error={}", resourceId, e.getMessage());
+            // 标记连接失败，触发重连检查
+            healthChecker.checkConnection();
         }
     }
     
     @Override
     public int indexAllPosts() {
+        // 检查 Elasticsearch 是否可用
+        if (!healthChecker.isAvailable()) {
+            log.warn("Elasticsearch 不可用，跳过批量索引帖子操作");
+            return 0;
+        }
+        
         int count = 0;
         try {
             List<ForumPost> posts = forumPostMapper.selectList(
@@ -349,6 +404,12 @@ public class SearchServiceImpl implements SearchService {
     
     @Override
     public int indexAllResources() {
+        // 检查 Elasticsearch 是否可用
+        if (!healthChecker.isAvailable()) {
+            log.warn("Elasticsearch 不可用，跳过批量索引资源操作");
+            return 0;
+        }
+        
         int count = 0;
         try {
             List<Resource> resources = resourceMapper.selectList(

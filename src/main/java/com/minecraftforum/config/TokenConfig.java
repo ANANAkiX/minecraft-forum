@@ -29,3 +29,4 @@ public class TokenConfig {
     private Boolean allowMultipleLogin = true;
 }
 
+

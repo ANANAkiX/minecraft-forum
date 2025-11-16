@@ -2,7 +2,7 @@
 
 基于 Spring Boot 3 的后端项目
 
-> **前端项目地址**：`../minecraft-forum-ui`  
+> **前端项目地址**：  https://github.com/ANANAkiX/minecraft-forum-ui.git
 > **前端开发服务器**：http://localhost:5173
 
 ## 技术栈

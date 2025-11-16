@@ -8,6 +8,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.http.HttpHost;
 import org.elasticsearch.client.RestClient;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
@@ -18,7 +19,9 @@ import org.springframework.context.annotation.Primary;
 /**
  * Elasticsearch 配置类
  * 配置 ElasticsearchClient 支持 Java 8 时间类型
+ * 连接失败时不影响应用启动，由健康检查器负责重连
  */
+@Slf4j
 @Configuration
 @RequiredArgsConstructor
 public class ElasticsearchConfig {
@@ -51,17 +54,56 @@ public class ElasticsearchConfig {
             scheme = uris.startsWith("https://") ? "https" : "http";
         }
         
-        // 创建 RestClient
-        RestClient restClient = RestClient.builder(
-                new HttpHost(host, port, scheme)
-        ).build();
-        
-        // 创建 Transport
-        ElasticsearchTransport transport = new RestClientTransport(
-                restClient, jsonpMapper);
-        
-        // 创建并返回 ElasticsearchClient
-        return new ElasticsearchClient(transport);
+        try {
+            // 创建 RestClient，设置连接超时和重试策略
+            RestClient restClient = RestClient.builder(
+                    new HttpHost(host, port, scheme)
+            )
+            .setRequestConfigCallback(requestConfigBuilder -> {
+                // 设置连接超时
+                int connectionTimeout = parseTimeout(elasticsearchProperties.getConnectionTimeout());
+                int socketTimeout = parseTimeout(elasticsearchProperties.getSocketTimeout());
+                return requestConfigBuilder
+                        .setConnectTimeout(connectionTimeout)
+                        .setSocketTimeout(socketTimeout);
+            })
+            .build();
+            
+            // 创建 Transport
+            ElasticsearchTransport transport = new RestClientTransport(
+                    restClient, jsonpMapper);
+            
+            // 创建并返回 ElasticsearchClient
+            // 注意：即使 Elasticsearch 服务不可用，客户端对象也能创建成功
+            // 实际的连接检查由 ElasticsearchHealthChecker 负责
+            log.info("Elasticsearch 客户端创建成功，连接状态将由健康检查器监控");
+            return new ElasticsearchClient(transport);
+        } catch (Exception e) {
+            // 如果创建客户端本身失败（如配置错误），记录警告并抛出异常
+            log.error("Elasticsearch 客户端创建失败: {}", e.getMessage(), e);
+            throw new RuntimeException("Elasticsearch 客户端创建失败", e);
+        }
+    }
+    
+    /**
+     * 解析超时时间字符串（如 "5s" -> 5000ms）
+     */
+    private int parseTimeout(String timeoutStr) {
+        if (timeoutStr == null || timeoutStr.isEmpty()) {
+            return 5000; // 默认5秒
+        }
+        try {
+            String trimmed = timeoutStr.trim().toLowerCase();
+            if (trimmed.endsWith("s")) {
+                return Integer.parseInt(trimmed.substring(0, trimmed.length() - 1)) * 1000;
+            } else if (trimmed.endsWith("ms")) {
+                return Integer.parseInt(trimmed.substring(0, trimmed.length() - 2));
+            } else {
+                return Integer.parseInt(trimmed);
+            }
+        } catch (Exception e) {
+            return 5000; // 默认5秒
+        }
     }
 }
 

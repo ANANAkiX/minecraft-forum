@@ -51,3 +51,4 @@ public class SearchResultDTO {
     private List<String> highlights;
 }
 
+
