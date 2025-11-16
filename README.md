@@ -3,6 +3,7 @@
 基于 Spring Boot 3 的后端项目
 
 > **前端项目地址**：  https://github.com/ANANAkiX/minecraft-forum-ui.git
+> 
 > **前端开发服务器**：http://localhost:5173
 
 ## 技术栈
@@ -80,6 +81,9 @@ mvn spring-boot:run
 或者使用 IDE 直接运行 `MinecraftForumApplication.java`
 
 4. 后端服务启动后，默认运行在：http://localhost:8080
+
+### 登录账号 admin
+### 登录密码 123456
 
 ## API 文档
 
