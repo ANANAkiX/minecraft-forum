@@ -77,6 +77,11 @@ public class SearchServiceImpl implements SearchService {
     }
     
     @Override
+    public boolean isSearchAvailable() {
+        return healthChecker.isAvailable();
+    }
+    
+    @Override
     public List<SearchResultDTO> search(String keyword, int page, int pageSize) {
         if (!StringUtils.hasText(keyword)) {
             return new ArrayList<>();
@@ -84,10 +89,11 @@ public class SearchServiceImpl implements SearchService {
         
         // 检查 Elasticsearch 是否可用
         if (!healthChecker.isAvailable()) {
-            log.debug("Elasticsearch 不可用，返回空搜索结果");
+            log.debug("Elasticsearch 不可用，搜索服务暂时不可用");
             // 触发一次连接检查（异步）
             healthChecker.checkConnection();
-            return new ArrayList<>();
+            // 抛出异常，让 Controller 处理
+            throw new RuntimeException("Elasticsearch 服务暂时不可用，正在连接中，请稍后重试");
         }
         
         try {

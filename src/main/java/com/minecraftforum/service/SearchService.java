@@ -15,8 +15,15 @@ public interface SearchService {
      * @param page 页码（从1开始）
      * @param pageSize 每页大小
      * @return 搜索结果列表
+     * @throws com.minecraftforum.exception.SearchServiceUnavailableException 当 Elasticsearch 不可用时抛出
      */
     List<SearchResultDTO> search(String keyword, int page, int pageSize);
+    
+    /**
+     * 检查搜索服务是否可用
+     * @return true 如果 Elasticsearch 可用，false 否则
+     */
+    boolean isSearchAvailable();
     
     /**
      * 索引帖子

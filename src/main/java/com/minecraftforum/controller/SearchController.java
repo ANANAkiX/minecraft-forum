@@ -41,15 +41,25 @@ public class SearchController {
             return Result.error(400, "搜索关键词不能为空");
         }
         
+        // 检查搜索服务是否可用
+        if (!searchService.isSearchAvailable()) {
+            return Result.error(503, "搜索服务暂时不可用，Elasticsearch 正在连接中，请稍后重试");
+        }
+        
         try {
             List<SearchResultDTO> results = searchService.search(keyword.trim(), page, pageSize);
             return Result.success(results);
         } catch (Exception e) {
             // 记录错误日志
+            String errorMessage = e.getMessage();
+            if (errorMessage != null && errorMessage.contains("Elasticsearch 服务暂时不可用")) {
+                // Elasticsearch 不可用，返回 503 错误
+                return Result.error(503, errorMessage);
+            }
+            // 其他错误，记录日志并返回空结果
             org.slf4j.LoggerFactory.getLogger(SearchController.class)
                     .error("搜索失败: keyword={}", keyword, e);
-            // 返回空结果而不是错误，避免前端显示错误提示
-            return Result.success(new java.util.ArrayList<>());
+            return Result.error(500, "搜索失败，请稍后重试");
         }
     }
     
