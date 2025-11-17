@@ -29,12 +29,13 @@ public class ConfigController {
      * 获取系统配置
      * 允许匿名访问，前端需要知道是否允许匿名访问首页和论坛
      */
-    @Operation(summary = "获取系统配置", description = "获取系统配置信息，包括是否允许匿名访问等")
+    @Operation(summary = "获取系统配置", description = "获取系统配置信息，包括是否允许匿名访问、是否开启Elasticsearch搜索等")
     @GetMapping("/system")
     @AnonymousAccess
     public Result<Map<String, Object>> getSystemConfig() {
         Map<String, Object> config = new HashMap<>();
         config.put("anonymousAccess", forumConfig.getAnonymousAccess() != null && forumConfig.getAnonymousAccess());
+        config.put("elasticsearchEnabled", forumConfig.getElasticsearchEnabled() != null && forumConfig.getElasticsearchEnabled());
         return Result.success(config);
     }
 }

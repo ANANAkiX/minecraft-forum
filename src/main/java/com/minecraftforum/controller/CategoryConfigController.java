@@ -4,6 +4,7 @@ import com.minecraftforum.common.Result;
 import com.minecraftforum.config.custom.annotations.AnonymousAccess;
 import com.minecraftforum.entity.CategoryConfig;
 import com.minecraftforum.service.CategoryConfigService;
+import com.minecraftforum.dto.DeleteRequest;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
@@ -55,10 +56,13 @@ public class CategoryConfigController {
      * 根据ID获取分类配置
      */
     @Operation(summary = "获取分类配置详情", description = "根据ID获取分类配置的详细信息，需要admin:category:manage权限")
-    @GetMapping("/{id}")
+    @GetMapping("/detail")
     public Result<CategoryConfig> getConfigById(
             @Parameter(description = "分类配置ID", required = true)
-            @PathVariable Long id) {
+            @RequestParam Long id) {
+        if (id == null) {
+            return Result.error(400, "分类配置ID不能为空");
+        }
         CategoryConfig config = categoryConfigService.getConfigById(id);
         if (config == null) {
             return Result.error(404, "分类配置不存在");
@@ -82,13 +86,13 @@ public class CategoryConfigController {
      * 更新分类配置
      */
     @Operation(summary = "更新分类配置", description = "更新分类配置信息，需要admin:category:manage权限")
-    @PutMapping("/{id}")
+    @PutMapping
     public Result<CategoryConfig> updateConfig(
-            @Parameter(description = "分类配置ID", required = true)
-            @PathVariable Long id,
             @Parameter(description = "分类配置信息", required = true)
             @RequestBody CategoryConfig config) {
-        config.setId(id);
+        if (config.getId() == null) {
+            return Result.error(400, "分类配置ID不能为空");
+        }
         CategoryConfig updated = categoryConfigService.updateConfig(config);
         return Result.success(updated);
     }
@@ -97,11 +101,13 @@ public class CategoryConfigController {
      * 删除分类配置
      */
     @Operation(summary = "删除分类配置", description = "删除分类配置，需要admin:category:manage权限")
-    @DeleteMapping("/{id}")
+    @DeleteMapping
     public Result<Void> deleteConfig(
-            @Parameter(description = "分类配置ID", required = true)
-            @PathVariable Long id) {
-        categoryConfigService.deleteConfig(id);
+            @RequestBody DeleteRequest request) {
+        if (request.getId() == null) {
+            return Result.error(400, "分类配置ID不能为空");
+        }
+        categoryConfigService.deleteConfig(request.getId());
         return Result.success(null);
     }
 }

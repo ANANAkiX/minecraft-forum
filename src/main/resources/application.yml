@@ -63,9 +63,9 @@ logging:
 
 # JWT 配置
 jwt:
-  secret: minecraft-forum-secret-key-2024-please-change-this-in-production
+  secret: minecraft-forum-secret-key-2025-please-change-this-in-production
   expiration: 86400000  # 24小时，单位：毫秒
-  allow-multiple-login: false  # 是否允许多点登录：true-允许多个客户端同时登录，false-只允许一个客户端（新登录会踢掉旧登录）
+  allow-multiple-login: true  # 是否允许多点登录：true-允许多个客户端同时登录，false-只允许一个客户端（新登录会踢掉旧登录）
 
 # 文件存储配置
 file:
@@ -76,6 +76,7 @@ file:
 forum:
   dev-mode: false  # 开发环境模式：true-资源自动审核通过，false-资源需要审核
   anonymous-access: false  # 是否允许匿名访问首页和论坛：true-允许未登录用户访问，false-需要登录
+  elasticsearch-enabled: true  # 是否开启Elasticsearch搜索：true-开启Elasticsearch搜索，false-不加载Elasticsearch功能
 
 # CORS 跨域配置
 cors:

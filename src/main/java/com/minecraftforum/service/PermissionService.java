@@ -22,5 +22,19 @@ public interface PermissionService {
     // void removePermissionFromUser(Long userId, Long permissionId);
     // void batchUpdateUserPermissions(Long userId, List<Long> permissionIds);
     boolean hasPermission(Long userId, String permissionCode);
+    
+    /**
+     * 获取权限树结构
+     * @param includeDisabled 是否包含禁用的权限
+     * @return 权限树节点列表
+     */
+    List<com.minecraftforum.dto.PermissionTreeNode> getPermissionTree(boolean includeDisabled);
+    
+    /**
+     * 根据权限ID列表，自动添加父权限（如果操作权限的父权限是页面访问权限，则自动添加父权限）
+     * @param permissionIds 权限ID列表
+     * @return 包含父权限的完整权限ID列表
+     */
+    List<Long> expandPermissionsWithParents(List<Long> permissionIds);
 }
 

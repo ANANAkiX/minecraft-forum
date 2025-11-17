@@ -3,6 +3,7 @@ package com.minecraftforum.service.impl;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.minecraftforum.dto.PermissionTreeNode;
 import com.minecraftforum.entity.Permission;
 import com.minecraftforum.entity.RolePermission;
 import com.minecraftforum.entity.UserRole;
@@ -15,9 +16,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
 import java.time.LocalDateTime;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -160,6 +159,130 @@ public class PermissionServiceImpl implements PermissionService {
         // 检查是否有指定权限
         return userPermissions.stream()
             .anyMatch(p -> p.getCode().equals(permissionCode));
+    }
+    
+    @Override
+    public List<PermissionTreeNode> getPermissionTree(boolean includeDisabled) {
+        // 获取所有权限
+        LambdaQueryWrapper<Permission> wrapper = new LambdaQueryWrapper<>();
+        if (!includeDisabled) {
+            wrapper.eq(Permission::getStatus, 1);
+        }
+        wrapper.orderByAsc(Permission::getSortOrder);
+        wrapper.orderByAsc(Permission::getCreateTime);
+        List<Permission> allPermissions = permissionMapper.selectList(wrapper);
+        
+        // 转换为树节点
+        Map<Long, PermissionTreeNode> nodeMap = new HashMap<>();
+        List<PermissionTreeNode> rootNodes = new ArrayList<>();
+        
+        // 第一遍：创建所有节点
+        for (Permission permission : allPermissions) {
+            PermissionTreeNode node = new PermissionTreeNode(permission);
+            nodeMap.put(permission.getId(), node);
+        }
+        
+        // 第二遍：构建树结构
+        for (Permission permission : allPermissions) {
+            PermissionTreeNode node = nodeMap.get(permission.getId());
+            Long parentId = permission.getParentId();
+            
+            if (parentId == null || parentId == 0) {
+                // 根节点
+                rootNodes.add(node);
+            } else {
+                // 子节点
+                PermissionTreeNode parentNode = nodeMap.get(parentId);
+                if (parentNode != null) {
+                    parentNode.getChildren().add(node);
+                } else {
+                    // 父节点不存在，作为根节点处理
+                    rootNodes.add(node);
+                }
+            }
+        }
+        
+        // 对每个节点的子节点进行排序
+        sortTreeNodes(rootNodes);
+        
+        return rootNodes;
+    }
+    
+    /**
+     * 递归排序树节点
+     */
+    private void sortTreeNodes(List<PermissionTreeNode> nodes) {
+        if (nodes == null || nodes.isEmpty()) {
+            return;
+        }
+        nodes.sort((a, b) -> {
+            int sortCompare = Integer.compare(
+                a.getSortOrder() != null ? a.getSortOrder() : 0,
+                b.getSortOrder() != null ? b.getSortOrder() : 0
+            );
+            if (sortCompare != 0) {
+                return sortCompare;
+            }
+            // 如果排序相同，按ID排序
+            return Long.compare(a.getId(), b.getId());
+        });
+        // 递归排序子节点
+        for (PermissionTreeNode node : nodes) {
+            if (node.getChildren() != null && !node.getChildren().isEmpty()) {
+                sortTreeNodes(node.getChildren());
+            }
+        }
+    }
+    
+    @Override
+    public List<Long> expandPermissionsWithParents(List<Long> permissionIds) {
+        if (permissionIds == null || permissionIds.isEmpty()) {
+            return new ArrayList<>();
+        }
+        
+        Set<Long> expandedIds = new HashSet<>(permissionIds);
+        
+        // 获取所有权限
+        List<Permission> allPermissions = permissionMapper.selectList(null);
+        Map<Long, Permission> permissionMap = allPermissions.stream()
+            .collect(Collectors.toMap(Permission::getId, p -> p));
+        
+        // 递归查找并添加父权限
+        Set<Long> processed = new HashSet<>();
+        for (Long permissionId : permissionIds) {
+            addParentPermissions(permissionId, permissionMap, expandedIds, processed);
+        }
+        
+        return new ArrayList<>(expandedIds);
+    }
+    
+    /**
+     * 递归添加父权限（如果操作权限的父权限是页面访问权限，则自动添加）
+     */
+    private void addParentPermissions(Long permissionId, Map<Long, Permission> permissionMap, 
+                                     Set<Long> expandedIds, Set<Long> processed) {
+        if (processed.contains(permissionId)) {
+            return; // 避免循环引用
+        }
+        processed.add(permissionId);
+        
+        Permission permission = permissionMap.get(permissionId);
+        if (permission == null) {
+            return;
+        }
+        
+        Long parentId = permission.getParentId();
+        if (parentId != null && parentId != 0) {
+            Permission parentPermission = permissionMap.get(parentId);
+            if (parentPermission != null && parentPermission.getStatus() == 1) {
+                // 如果当前权限是操作权限，且父权限是页面访问权限，则自动添加父权限
+                if ("ACTION".equals(permission.getType()) && "PAGE".equals(parentPermission.getType())) {
+                    expandedIds.add(parentId);
+                    // 递归处理父权限的父权限
+                    addParentPermissions(parentId, permissionMap, expandedIds, processed);
+                }
+            }
+        }
     }
 }
 

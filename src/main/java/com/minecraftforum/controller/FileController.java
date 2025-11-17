@@ -4,6 +4,7 @@ import com.minecraftforum.common.Result;
 import com.minecraftforum.config.custom.annotations.AnonymousAccess;
 import com.minecraftforum.entity.SysFile;
 import com.minecraftforum.service.FileService;
+import com.minecraftforum.dto.DeleteRequest;
 import com.minecraftforum.util.ResourceUtil;
 import com.minecraftforum.util.SecurityUtil;
 import io.swagger.v3.oas.annotations.Operation;
@@ -123,10 +124,14 @@ public class FileController {
      * 获取文件信息
      */
     @Operation(summary = "获取文件信息", description = "根据文件ID获取文件信息")
-    @GetMapping("/{id}")
+    @GetMapping("/detail")
     public Result<SysFile> getFile(
             @Parameter(description = "文件ID", required = true)
-            @PathVariable Long id) {
+            @RequestParam Long id) {
+        
+        if (id == null) {
+            return Result.error(400, "文件ID不能为空");
+        }
         
         SysFile sysFile = fileService.getFileById(id);
         if (sysFile == null) {
@@ -141,11 +146,15 @@ public class FileController {
      * 注意：此接口允许匿名访问，但会根据用户权限决定是否返回敏感信息（文件URL和文件名）
      */
     @Operation(summary = "获取资源文件列表", description = "根据资源ID获取该资源关联的所有文件。无下载权限的用户将无法看到文件URL和文件名")
-    @GetMapping("/resource/{resourceId}")
+    @GetMapping("/resource")
     @AnonymousAccess
     public Result<List<SysFile>> getFilesByResourceId(
             @Parameter(description = "资源ID", required = true)
-            @PathVariable Long resourceId) {
+            @RequestParam Long resourceId) {
+        
+        if (resourceId == null) {
+            return Result.error(400, "资源ID不能为空");
+        }
         
         List<SysFile> files = fileService.getFilesByResourceId(resourceId);
         
@@ -168,10 +177,14 @@ public class FileController {
      * 权限检查由 PermissionInterceptor 统一处理
      */
     @Operation(summary = "下载文件", description = "从OSS下载文件，需要resource:download权限（由PermissionInterceptor统一检查）")
-    @GetMapping("/{id}/download")
+    @GetMapping("/download")
     public ResponseEntity<InputStreamResource> downloadFile(
             @Parameter(description = "文件ID", required = true)
-            @PathVariable Long id) {
+            @RequestParam Long id) {
+        
+        if (id == null) {
+            return ResponseEntity.status(400).build();
+        }
         
         com.aliyun.oss.OSS ossClient = null;
         InputStream inputStream = null;
@@ -236,13 +249,16 @@ public class FileController {
      * 删除文件
      */
     @Operation(summary = "删除文件", description = "删除文件（从 OSS 和数据库中删除）")
-    @DeleteMapping("/{id}")
+    @DeleteMapping
     public Result<Void> deleteFile(
-            @Parameter(description = "文件ID", required = true)
-            @PathVariable Long id) {
+            @RequestBody DeleteRequest request) {
         
+        if (request.getId() == null) {
+            return Result.error(400, "文件ID不能为空");
+        }
+
         try {
-            fileService.deleteFile(id);
+            fileService.deleteFile(request.getId());
             return Result.success(null);
         } catch (IllegalArgumentException e) {
             return Result.error(400, e.getMessage());

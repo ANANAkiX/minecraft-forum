@@ -11,6 +11,10 @@ import com.minecraftforum.entity.ResourceTag;
 import com.minecraftforum.mapper.ResourceTagMapper;
 import com.minecraftforum.service.ResourceService;
 import com.minecraftforum.util.SecurityUtil;
+import com.minecraftforum.dto.UpdateResourceRequest;
+import com.minecraftforum.dto.DeleteRequest;
+import com.minecraftforum.dto.ActionRequest;
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
@@ -72,11 +76,14 @@ public class ResourceController {
      * 获取资源详情
      */
     @Operation(summary = "获取资源详情", description = "根据ID获取资源的详细信息")
-    @GetMapping("/{id}")
+    @GetMapping("/detail")
     @AnonymousAccess
     public Result<ResourceDTO> getResourceById(
             @Parameter(description = "资源ID", required = true)
-            @PathVariable Long id) {
+            @RequestParam Long id) {
+        if (id == null) {
+            return Result.error(400, "资源ID不能为空");
+        }
         ResourceDTO resource = resourceService.getResourceById(id);
         if (resource == null) {
             return Result.error(404, "资源不存在");
@@ -156,15 +163,17 @@ public class ResourceController {
      * 更新资源
      */
     @Operation(summary = "更新资源", description = "更新资源信息，只能更新自己创建的资源")
-    @PutMapping("/{id}")
+    @PutMapping
     public Result<ResourceDTO> updateResource(
-            @Parameter(description = "资源ID", required = true)
-            @PathVariable Long id,
             @Parameter(description = "资源信息", required = true)
-            @RequestBody Resource resource) {
+            @RequestBody UpdateResourceRequest request) {
         
+        if (request.getId() == null) {
+            return Result.error(400, "资源ID不能为空");
+        }
+
         Long userId = securityUtil.getCurrentUserId();
-        ResourceDTO existing = resourceService.getResourceById(id);
+        ResourceDTO existing = resourceService.getResourceById(request.getId());
         if (existing == null) {
             return Result.error(404, "资源不存在");
         }
@@ -172,9 +181,56 @@ public class ResourceController {
             return Result.error(403, "没有权限修改此资源");
         }
 
-        resource.setId(id);
+        Resource resource = new Resource();
+        resource.setId(request.getId());
+        resource.setTitle(request.getTitle());
+        resource.setDescription(request.getDescription());
+        resource.setContent(request.getContent());
+        resource.setCategory(request.getCategory());
+        resource.setVersion(request.getVersion());
+        
         resourceService.updateResource(resource);
-        ResourceDTO updated = resourceService.getResourceById(id);
+        
+        // 更新标签（如果提供了标签）
+        if (request.getTags() != null) {
+            // 删除旧标签
+            LambdaQueryWrapper<ResourceTag> deleteWrapper = new LambdaQueryWrapper<>();
+            deleteWrapper.eq(ResourceTag::getResourceId, request.getId());
+            resourceTagMapper.delete(deleteWrapper);
+            
+            // 解析并保存新标签
+            String tags = request.getTags();
+            if (!tags.isEmpty()) {
+                try {
+                    List<String> tagList;
+                    if (tags.startsWith("[")) {
+                        // JSON 格式的标签数组
+                        tagList = objectMapper.readValue(tags, List.class);
+                    } else {
+                        // 逗号分隔的标签字符串
+                        tagList = new ArrayList<>();
+                        String[] tagArray = tags.split(",");
+                        for (String tag : tagArray) {
+                            if (!tag.trim().isEmpty()) {
+                                tagList.add(tag.trim());
+                            }
+                        }
+                    }
+                    
+                    // 保存新标签
+                    for (String tagName : tagList) {
+                        ResourceTag tagEntity = new ResourceTag();
+                        tagEntity.setResourceId(request.getId());
+                        tagEntity.setTagName(tagName);
+                        resourceTagMapper.insert(tagEntity);
+                    }
+                } catch (Exception e) {
+                    // 标签解析失败，忽略继续
+                }
+            }
+        }
+        
+        ResourceDTO updated = resourceService.getResourceById(request.getId());
         return Result.success(updated);
     }
 
@@ -182,13 +238,16 @@ public class ResourceController {
      * 删除资源
      */
     @Operation(summary = "删除资源", description = "删除资源，只能删除自己创建的资源")
-    @DeleteMapping("/{id}")
+    @DeleteMapping
     public Result<Void> deleteResource(
-            @Parameter(description = "资源ID", required = true)
-            @PathVariable Long id) {
+            @RequestBody DeleteRequest request) {
         
+        if (request.getId() == null) {
+            return Result.error(400, "资源ID不能为空");
+        }
+
         Long userId = securityUtil.getCurrentUserId();
-        ResourceDTO resource = resourceService.getResourceById(id);
+        ResourceDTO resource = resourceService.getResourceById(request.getId());
         if (resource == null) {
             return Result.error(404, "资源不存在");
         }
@@ -196,7 +255,7 @@ public class ResourceController {
             return Result.error(403, "没有权限删除此资源");
         }
 
-        resourceService.deleteResource(id);
+        resourceService.deleteResource(request.getId());
         return Result.success(null);
     }
 
@@ -204,13 +263,16 @@ public class ResourceController {
      * 点赞资源
      */
     @Operation(summary = "点赞资源", description = "为资源点赞")
-    @PostMapping("/{id}/like")
+    @PostMapping("/like")
     public Result<Void> likeResource(
-            @Parameter(description = "资源ID", required = true)
-            @PathVariable Long id) {
+            @RequestBody ActionRequest request) {
         
+        if (request.getId() == null) {
+            return Result.error(400, "资源ID不能为空");
+        }
+
         Long userId = securityUtil.getCurrentUserId();
-        resourceService.likeResource(id, userId);
+        resourceService.likeResource(request.getId(), userId);
         return Result.success(null);
     }
 
@@ -218,13 +280,16 @@ public class ResourceController {
      * 取消点赞资源
      */
     @Operation(summary = "取消点赞", description = "取消对资源的点赞")
-    @DeleteMapping("/{id}/like")
+    @DeleteMapping("/like")
     public Result<Void> unlikeResource(
-            @Parameter(description = "资源ID", required = true)
-            @PathVariable Long id) {
+            @RequestBody ActionRequest request) {
         
+        if (request.getId() == null) {
+            return Result.error(400, "资源ID不能为空");
+        }
+
         Long userId = securityUtil.getCurrentUserId();
-        resourceService.unlikeResource(id, userId);
+        resourceService.unlikeResource(request.getId(), userId);
         return Result.success(null);
     }
 
@@ -232,13 +297,16 @@ public class ResourceController {
      * 收藏资源
      */
     @Operation(summary = "收藏资源", description = "收藏资源到个人收藏夹")
-    @PostMapping("/{id}/favorite")
+    @PostMapping("/favorite")
     public Result<Void> favoriteResource(
-            @Parameter(description = "资源ID", required = true)
-            @PathVariable Long id) {
+            @RequestBody ActionRequest request) {
         
+        if (request.getId() == null) {
+            return Result.error(400, "资源ID不能为空");
+        }
+
         Long userId = securityUtil.getCurrentUserId();
-        resourceService.favoriteResource(id, userId);
+        resourceService.favoriteResource(request.getId(), userId);
         return Result.success(null);
     }
 
@@ -246,13 +314,16 @@ public class ResourceController {
      * 取消收藏资源
      */
     @Operation(summary = "取消收藏", description = "从个人收藏夹中移除资源")
-    @DeleteMapping("/{id}/favorite")
+    @DeleteMapping("/favorite")
     public Result<Void> unfavoriteResource(
-            @Parameter(description = "资源ID", required = true)
-            @PathVariable Long id) {
+            @RequestBody ActionRequest request) {
         
+        if (request.getId() == null) {
+            return Result.error(400, "资源ID不能为空");
+        }
+
         Long userId = securityUtil.getCurrentUserId();
-        resourceService.unfavoriteResource(id, userId);
+        resourceService.unfavoriteResource(request.getId(), userId);
         return Result.success(null);
     }
 
@@ -260,13 +331,16 @@ public class ResourceController {
      * 下载资源
      */
     @Operation(summary = "下载资源", description = "下载资源文件，记录下载日志，需要resource:download权限")
-    @PostMapping("/{id}/download")
+    @PostMapping("/download")
     public Result<Void> downloadResource(
-            @Parameter(description = "资源ID", required = true)
-            @PathVariable Long id) {
+            @RequestBody ActionRequest request) {
         
+        if (request.getId() == null) {
+            return Result.error(400, "资源ID不能为空");
+        }
+
         Long userId = securityUtil.getCurrentUserId();
-        resourceService.downloadResource(id, userId);
+        resourceService.downloadResource(request.getId(), userId);
         return Result.success(null);
     }
 }

@@ -7,6 +7,11 @@ import com.minecraftforum.config.custom.annotations.AnonymousAccess;
 import com.minecraftforum.dto.CommentDTO;
 import com.minecraftforum.dto.ForumPostDTO;
 import com.minecraftforum.dto.ReplyDTO;
+import com.minecraftforum.dto.UpdatePostRequest;
+import com.minecraftforum.dto.DeleteRequest;
+import com.minecraftforum.dto.CreateCommentRequest;
+import com.minecraftforum.dto.CreateReplyRequest;
+import com.minecraftforum.dto.ActionRequest;
 import com.minecraftforum.entity.Comment;
 import com.minecraftforum.entity.ForumPost;
 import com.minecraftforum.entity.ForumReply;
@@ -77,11 +82,14 @@ public class ForumController {
      * 获取帖子详情
      */
     @Operation(summary = "获取帖子详情", description = "根据ID获取帖子的详细信息")
-    @GetMapping("/posts/{id}")
+    @GetMapping("/posts/detail")
     @AnonymousAccess
     public Result<ForumPostDTO> getPostById(
             @Parameter(description = "帖子ID", required = true)
-            @PathVariable Long id) {
+            @RequestParam Long id) {
+        if (id == null) {
+            return Result.error(400, "帖子ID不能为空");
+        }
         ForumPostDTO post = forumService.getPostById(id);
         if (post == null) {
             return Result.error(404, "帖子不存在");
@@ -108,15 +116,17 @@ public class ForumController {
      * 更新帖子
      */
     @Operation(summary = "更新帖子", description = "更新帖子信息，只能更新自己发布的帖子")
-    @PutMapping("/posts/{id}")
+    @PutMapping("/posts")
     public Result<ForumPost> updatePost(
-            @Parameter(description = "帖子ID", required = true)
-            @PathVariable Long id,
             @Parameter(description = "帖子信息", required = true)
-            @RequestBody ForumPost post) {
+            @RequestBody UpdatePostRequest request) {
         
+        if (request.getId() == null) {
+            return Result.error(400, "帖子ID不能为空");
+        }
+
         Long userId = securityUtil.getCurrentUserId();
-        ForumPostDTO existing = forumService.getPostById(id);
+        ForumPostDTO existing = forumService.getPostById(request.getId());
         if (existing == null) {
             return Result.error(404, "帖子不存在");
         }
@@ -124,7 +134,12 @@ public class ForumController {
             return Result.error(403, "没有权限修改此帖子");
         }
 
-        post.setId(id);
+        ForumPost post = new ForumPost();
+        post.setId(request.getId());
+        post.setTitle(request.getTitle());
+        post.setContent(request.getContent());
+        post.setCategory(request.getCategory());
+        
         ForumPost updated = forumService.updatePost(post);
         return Result.success(updated);
     }
@@ -133,13 +148,16 @@ public class ForumController {
      * 删除帖子
      */
     @Operation(summary = "删除帖子", description = "删除帖子，只能删除自己发布的帖子")
-    @DeleteMapping("/posts/{id}")
+    @DeleteMapping("/posts")
     public Result<Void> deletePost(
-            @Parameter(description = "帖子ID", required = true)
-            @PathVariable Long id) {
+            @RequestBody DeleteRequest request) {
         
+        if (request.getId() == null) {
+            return Result.error(400, "帖子ID不能为空");
+        }
+
         Long userId = securityUtil.getCurrentUserId();
-        ForumPostDTO post = forumService.getPostById(id);
+        ForumPostDTO post = forumService.getPostById(request.getId());
         if (post == null) {
             return Result.error(404, "帖子不存在");
         }
@@ -147,7 +165,7 @@ public class ForumController {
             return Result.error(403, "没有权限删除此帖子");
         }
 
-        forumService.deletePost(id);
+        forumService.deletePost(request.getId());
         return Result.success(null);
     }
 
@@ -155,13 +173,16 @@ public class ForumController {
      * 点赞帖子
      */
     @Operation(summary = "点赞帖子", description = "为帖子点赞")
-    @PostMapping("/posts/{id}/like")
+    @PostMapping("/posts/like")
     public Result<Void> likePost(
-            @Parameter(description = "帖子ID", required = true)
-            @PathVariable Long id) {
+            @RequestBody ActionRequest request) {
         
+        if (request.getId() == null) {
+            return Result.error(400, "帖子ID不能为空");
+        }
+
         Long userId = securityUtil.getCurrentUserId();
-        forumService.likePost(id, userId);
+        forumService.likePost(request.getId(), userId);
         return Result.success(null);
     }
 
@@ -169,13 +190,16 @@ public class ForumController {
      * 取消点赞帖子
      */
     @Operation(summary = "取消点赞", description = "取消对帖子的点赞")
-    @DeleteMapping("/posts/{id}/like")
+    @DeleteMapping("/posts/like")
     public Result<Void> unlikePost(
-            @Parameter(description = "帖子ID", required = true)
-            @PathVariable Long id) {
+            @RequestBody ActionRequest request) {
         
+        if (request.getId() == null) {
+            return Result.error(400, "帖子ID不能为空");
+        }
+
         Long userId = securityUtil.getCurrentUserId();
-        forumService.unlikePost(id, userId);
+        forumService.unlikePost(request.getId(), userId);
         return Result.success(null);
     }
 
@@ -183,16 +207,19 @@ public class ForumController {
      * 创建评论
      */
     @Operation(summary = "创建评论", description = "为帖子创建评论，需要comment:create权限")
-    @PostMapping("/posts/{postId}/comments")
+    @PostMapping("/posts/comments")
     public Result<Comment> createComment(
-            @Parameter(description = "帖子ID", required = true)
-            @PathVariable Long postId,
-            @Parameter(description = "评论内容", required = true)
-            @RequestBody Map<String, String> body) {
+            @RequestBody CreateCommentRequest request) {
         
+        if (request.getPostId() == null) {
+            return Result.error(400, "帖子ID不能为空");
+        }
+        if (request.getContent() == null || request.getContent().trim().isEmpty()) {
+            return Result.error(400, "评论内容不能为空");
+        }
+
         Long userId = securityUtil.getCurrentUserId();
-        String content = body.get("content");
-        Comment comment = forumService.createComment(postId, userId, content);
+        Comment comment = forumService.createComment(request.getPostId(), userId, request.getContent());
         return Result.success(comment);
     }
 
@@ -200,15 +227,18 @@ public class ForumController {
      * 删除评论
      */
     @Operation(summary = "删除评论", description = "删除评论，只有评论作者可以删除（级联删除所有子回复）")
-    @DeleteMapping("/comments/{id}")
+    @DeleteMapping("/comments")
     public Result<Void> deleteComment(
-            @Parameter(description = "评论ID", required = true)
-            @PathVariable Long id) {
+            @RequestBody DeleteRequest request) {
         
+        if (request.getId() == null) {
+            return Result.error(400, "评论ID不能为空");
+        }
+
         Long userId = securityUtil.getCurrentUserId();
 
         // 检查权限：只有评论作者可以删除评论
-        Comment comment = commentMapper.selectById(id);
+        Comment comment = commentMapper.selectById(request.getId());
         if (comment == null) {
             return Result.error(404, "评论不存在");
         }
@@ -218,7 +248,7 @@ public class ForumController {
             return Result.error(403, "没有权限删除此评论");
         }
         
-        forumService.deleteComment(id);
+        forumService.deleteComment(request.getId());
         return Result.success(null);
     }
 
@@ -226,21 +256,20 @@ public class ForumController {
      * 创建回复
      */
     @Operation(summary = "创建回复", description = "为评论创建回复，可以@其他用户，支持回复回复（嵌套回复）")
-    @PostMapping("/comments/{commentId}/replies")
+    @PostMapping("/comments/replies")
     public Result<ForumReply> createReply(
-            @Parameter(description = "评论ID", required = true)
-            @PathVariable Long commentId,
-            @Parameter(description = "回复内容", required = true)
-            @RequestBody Map<String, Object> body) {
+            @RequestBody CreateReplyRequest request) {
         
-        Long userId = securityUtil.getCurrentUserId();
-        String content = (String) body.get("content");
-        Long targetUserId = body.get("targetUserId") != null ?
-                Long.valueOf(body.get("targetUserId").toString()) : null;
-        Long parentId = body.get("parentId") != null ?
-                Long.valueOf(body.get("parentId").toString()) : null;
+        if (request.getCommentId() == null) {
+            return Result.error(400, "评论ID不能为空");
+        }
+        if (request.getContent() == null || request.getContent().trim().isEmpty()) {
+            return Result.error(400, "回复内容不能为空");
+        }
 
-        ForumReply reply = forumService.createReply(commentId, userId, content, targetUserId, parentId);
+        Long userId = securityUtil.getCurrentUserId();
+
+        ForumReply reply = forumService.createReply(request.getCommentId(), userId, request.getContent(), request.getTargetUserId(), request.getParentId());
         return Result.success(reply);
     }
 
@@ -248,15 +277,18 @@ public class ForumController {
      * 删除回复
      */
     @Operation(summary = "删除回复", description = "删除回复，只有回复作者可以删除（级联删除所有子回复）")
-    @DeleteMapping("/replies/{id}")
+    @DeleteMapping("/replies")
     public Result<Void> deleteReply(
-            @Parameter(description = "回复ID", required = true)
-            @PathVariable Long id) {
+            @RequestBody DeleteRequest request) {
         
+        if (request.getId() == null) {
+            return Result.error(400, "回复ID不能为空");
+        }
+
         Long userId = securityUtil.getCurrentUserId();
 
         // 检查权限：只有回复作者可以删除回复
-        ForumReply reply = replyMapper.selectById(id);
+        ForumReply reply = replyMapper.selectById(request.getId());
         if (reply == null) {
             return Result.error(404, "回复不存在");
         }
@@ -266,7 +298,7 @@ public class ForumController {
             return Result.error(403, "没有权限删除此回复");
         }
         
-        forumService.deleteReply(id);
+        forumService.deleteReply(request.getId());
         return Result.success(null);
     }
 
@@ -275,13 +307,16 @@ public class ForumController {
      * 点赞评论
      */
     @Operation(summary = "点赞评论", description = "为评论点赞")
-    @PostMapping("/comments/{id}/like")
+    @PostMapping("/comments/like")
     public Result<Void> likeComment(
-            @Parameter(description = "评论ID", required = true)
-            @PathVariable Long id) {
+            @RequestBody ActionRequest request) {
         
+        if (request.getId() == null) {
+            return Result.error(400, "评论ID不能为空");
+        }
+
         Long userId = securityUtil.getCurrentUserId();
-        forumService.likeComment(id, userId);
+        forumService.likeComment(request.getId(), userId);
         return Result.success(null);
     }
 
@@ -289,13 +324,16 @@ public class ForumController {
      * 点赞回复
      */
     @Operation(summary = "点赞回复", description = "为回复点赞")
-    @PostMapping("/replies/{id}/like")
+    @PostMapping("/replies/like")
     public Result<Void> likeReply(
-            @Parameter(description = "回复ID", required = true)
-            @PathVariable Long id) {
+            @RequestBody ActionRequest request) {
         
+        if (request.getId() == null) {
+            return Result.error(400, "回复ID不能为空");
+        }
+
         Long userId = securityUtil.getCurrentUserId();
-        forumService.likeReply(id, userId);
+        forumService.likeReply(request.getId(), userId);
         return Result.success(null);
     }
     
@@ -303,27 +341,33 @@ public class ForumController {
      * 取消点赞评论
      */
     @Operation(summary = "取消点赞评论", description = "取消对评论的点赞")
-    @DeleteMapping("/comments/{id}/like")
+    @DeleteMapping("/comments/like")
     public Result<Void> unlikeComment(
-            @Parameter(description = "评论ID", required = true)
-            @PathVariable Long id) {
+            @RequestBody ActionRequest request) {
         
+        if (request.getId() == null) {
+            return Result.error(400, "评论ID不能为空");
+        }
+
         Long userId = securityUtil.getCurrentUserId();
-        forumService.unlikeComment(id, userId);
+        forumService.unlikeComment(request.getId(), userId);
         return Result.success(null);
     }
-    
+
     /**
      * 取消点赞回复
      */
     @Operation(summary = "取消点赞回复", description = "取消对回复的点赞")
-    @DeleteMapping("/replies/{id}/like")
+    @DeleteMapping("/replies/like")
     public Result<Void> unlikeReply(
-            @Parameter(description = "回复ID", required = true)
-            @PathVariable Long id) {
+            @RequestBody ActionRequest request) {
         
+        if (request.getId() == null) {
+            return Result.error(400, "回复ID不能为空");
+        }
+
         Long userId = securityUtil.getCurrentUserId();
-        forumService.unlikeReply(id, userId);
+        forumService.unlikeReply(request.getId(), userId);
         return Result.success(null);
     }
     
@@ -331,15 +375,19 @@ public class ForumController {
      * 获取帖子评论列表（分页）
      */
     @Operation(summary = "获取帖子评论列表", description = "分页获取帖子的评论列表，返回树形结构")
-    @GetMapping("/posts/{postId}/comments")
+    @GetMapping("/posts/comments")
     @AnonymousAccess
     public Result<Map<String, Object>> getCommentsByPostId(
             @Parameter(description = "帖子ID", required = true)
-            @PathVariable Long postId,
+            @RequestParam Long postId,
             @Parameter(description = "页码", example = "1")
             @RequestParam(defaultValue = "1") Integer page,
             @Parameter(description = "每页数量", example = "10")
             @RequestParam(defaultValue = "10") Integer pageSize) {
+        
+        if (postId == null) {
+            return Result.error(400, "帖子ID不能为空");
+        }
         
         IPage<CommentDTO> result = forumService.getCommentsByPostId(postId, page, pageSize);
         
@@ -356,11 +404,15 @@ public class ForumController {
      * 获取用户评论列表
      */
     @Operation(summary = "获取用户评论列表", description = "获取指定用户的所有评论")
-    @GetMapping("/users/{userId}/comments")
+    @GetMapping("/users/comments")
     @AnonymousAccess
     public Result<List<CommentDTO>> getUserComments(
             @Parameter(description = "用户ID", required = true)
-            @PathVariable Long userId) {
+            @RequestParam Long userId) {
+        
+        if (userId == null) {
+            return Result.error(400, "用户ID不能为空");
+        }
         
         List<CommentDTO> comments = forumService.getUserComments(userId);
         return Result.success(comments);
@@ -370,11 +422,15 @@ public class ForumController {
      * 获取评论的子回复列表
      */
     @Operation(summary = "获取评论的子回复列表", description = "获取指定评论的所有子回复")
-    @GetMapping("/comments/{commentId}/replies")
+    @GetMapping("/comments/replies")
     @AnonymousAccess
     public Result<List<ReplyDTO>> getRepliesByCommentId(
             @Parameter(description = "评论ID", required = true)
-            @PathVariable Long commentId) {
+            @RequestParam Long commentId) {
+        
+        if (commentId == null) {
+            return Result.error(400, "评论ID不能为空");
+        }
         
         List<ReplyDTO> replies = forumService.getRepliesByCommentId(commentId);
         return Result.success(replies);
