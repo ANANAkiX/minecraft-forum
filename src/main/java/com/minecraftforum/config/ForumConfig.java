@@ -22,4 +22,9 @@ public class ForumConfig {
      * 是否允许匿名访问首页和论坛：true-允许未登录用户访问，false-需要登录
      */
     private Boolean anonymousAccess = true;
+    
+    /**
+     * 是否开启Elasticsearch搜索：true-开启Elasticsearch搜索，false-不加载Elasticsearch功能
+     */
+    private Boolean elasticsearchEnabled = true;
 }

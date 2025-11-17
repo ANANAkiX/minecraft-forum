@@ -1,6 +1,7 @@
 package com.minecraftforum.service;
 
 import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.minecraftforum.util.ApiScanner;
 import lombok.RequiredArgsConstructor;
@@ -28,7 +29,16 @@ public class ApiCacheService {
     private final StringRedisTemplate redisTemplate;
     private final ApiScanner apiScanner;
     private final ApplicationContext applicationContext;
-    private final ObjectMapper objectMapper = new ObjectMapper();
+    
+    // 初始化 ObjectMapper，配置忽略未知属性
+    private final ObjectMapper objectMapper = createObjectMapper();
+    
+    private static ObjectMapper createObjectMapper() {
+        ObjectMapper mapper = new ObjectMapper();
+        // 忽略未知属性，避免反序列化时出错
+        mapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
+        return mapper;
+    }
 
     /**
      * 从 Redis 获取 API 列表
@@ -40,7 +50,13 @@ public class ApiCacheService {
                 return objectMapper.readValue(json, new TypeReference<List<ApiScanner.ApiInfo>>() {});
             }
         } catch (Exception e) {
-            log.error("从 Redis 读取 API 列表失败", e);
+            log.error("从 Redis 读取 API 列表失败，将清除旧缓存并重新扫描", e);
+            // 反序列化失败，清除旧缓存
+            try {
+                clearCache();
+            } catch (Exception ex) {
+                log.warn("清除旧缓存失败", ex);
+            }
         }
         return null;
     }

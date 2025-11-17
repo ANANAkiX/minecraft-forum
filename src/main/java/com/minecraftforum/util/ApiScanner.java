@@ -33,6 +33,11 @@ public class ApiScanner {
         private String method;
         private String description;
         private String summary;
+        private String displayName; // 用于缓存中的序列化/反序列化
+        
+        // 默认构造函数，用于 Jackson 反序列化
+        public ApiInfo() {
+        }
         
         public ApiInfo(String url, String method, String description, String summary) {
             this.url = url;
@@ -45,23 +50,47 @@ public class ApiScanner {
             return url;
         }
         
+        public void setUrl(String url) {
+            this.url = url;
+        }
+        
         public String getMethod() {
             return method;
+        }
+        
+        public void setMethod(String method) {
+            this.method = method;
         }
         
         public String getDescription() {
             return description;
         }
         
+        public void setDescription(String description) {
+            this.description = description;
+        }
+        
         public String getSummary() {
             return summary;
         }
         
+        public void setSummary(String summary) {
+            this.summary = summary;
+        }
+        
         public String getDisplayName() {
+            if (displayName != null && !displayName.isEmpty()) {
+                return displayName;
+            }
+            // 如果没有设置 displayName，则计算生成
             if (summary != null && !summary.isEmpty()) {
                 return summary + " (" + method + " " + url + ")";
             }
             return method + " " + url;
+        }
+        
+        public void setDisplayName(String displayName) {
+            this.displayName = displayName;
         }
     }
     
@@ -236,7 +265,16 @@ public class ApiScanner {
             description = "API接口: " + method.getName();
         }
         
-        return new ApiInfo(fullPath, httpMethod, description, summary);
+        // 创建 ApiInfo 对象
+        ApiInfo apiInfo = new ApiInfo(fullPath, httpMethod, description, summary);
+        // 设置 displayName，确保序列化时包含此字段
+        if (summary != null && !summary.isEmpty()) {
+            apiInfo.setDisplayName(summary + " (" + httpMethod + " " + fullPath + ")");
+        } else {
+            apiInfo.setDisplayName(httpMethod + " " + fullPath);
+        }
+        
+        return apiInfo;
     }
     
     /**

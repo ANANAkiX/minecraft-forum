@@ -13,10 +13,7 @@ import com.minecraftforum.mapper.PermissionMapper;
 import com.minecraftforum.mapper.RoleMapper;
 import com.minecraftforum.mapper.RolePermissionMapper;
 import com.minecraftforum.mapper.UserRoleMapper;
-import com.minecraftforum.service.PermissionService;
-import com.minecraftforum.service.UserService;
-import com.minecraftforum.service.ResourceService;
-import com.minecraftforum.service.ForumService;
+import com.minecraftforum.service.*;
 import com.minecraftforum.dto.ResourceDTO;
 import com.minecraftforum.dto.ForumPostDTO;
 import com.minecraftforum.entity.ForumPost;
@@ -51,7 +48,7 @@ import java.util.stream.Collectors;
 public class AdminController {
 
     private final UserService userService;
-    private final com.minecraftforum.service.FileService fileService;
+    private final FileService fileService;
     private final PermissionService permissionService;
     private final UserRoleMapper userRoleMapper;
     private final RoleMapper roleMapper;
@@ -59,7 +56,8 @@ public class AdminController {
     private final PermissionMapper permissionMapper;
     private final ResourceService resourceService;
     private final ForumService forumService;
-    private final com.minecraftforum.service.ApiCacheService apiCacheService;
+    private final ApiCacheService apiCacheService;
+    private final PermissionCacheService permissionCacheService;
     private final ApplicationEventPublisher eventPublisher;
 
 
@@ -530,13 +528,16 @@ public class AdminController {
         }
 
         try {
+            // 扩展权限列表：自动添加父权限（如果操作权限的父权限是页面访问权限）
+            List<Long> expandedPermissionIds = permissionService.expandPermissionsWithParents(permissionIds);
+            
             // 获取当前角色权限
             com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<RolePermission> wrapper = new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<>();
             wrapper.eq(RolePermission::getRoleId, id);
             List<RolePermission> currentRolePermissions = rolePermissionMapper.selectList(wrapper);
 
-            // 获取目标权限代码
-            List<Permission> targetPermissions = permissionIds.isEmpty() ? List.of() : permissionMapper.selectBatchIds(permissionIds);
+            // 获取目标权限代码（使用扩展后的权限ID列表）
+            List<Permission> targetPermissions = expandedPermissionIds.isEmpty() ? List.of() : permissionMapper.selectBatchIds(expandedPermissionIds);
             Set<String> targetPermissionCodes = targetPermissions.stream().map(Permission::getCode).collect(java.util.stream.Collectors.toSet());
 
             // 获取当前权限代码
@@ -694,6 +695,16 @@ public class AdminController {
     }
 
     /**
+     * 获取权限树结构
+     */
+    @Operation(summary = "获取权限树", description = "获取权限的树形结构，支持包含禁用权限")
+    @GetMapping("/permissions/tree")
+    public Result<List<com.minecraftforum.dto.PermissionTreeNode>> getPermissionTree(@Parameter(description = "是否包含禁用的权限") @RequestParam(defaultValue = "false") Boolean includeDisabled, HttpServletRequest request) {
+        List<com.minecraftforum.dto.PermissionTreeNode> tree = permissionService.getPermissionTree(includeDisabled);
+        return Result.success(tree);
+    }
+
+    /**
      * 创建权限
      */
     @Operation(summary = "创建权限", description = "创建新权限，需要admin:permission:create或admin:permission:manage权限")
@@ -704,6 +715,10 @@ public class AdminController {
         permission.setCreateTime(LocalDateTime.now());
         permission.setUpdateTime(LocalDateTime.now());
         Permission created = permissionService.createPermission(permission);
+        
+        // 刷新权限缓存
+        permissionCacheService.refreshPermissionCache();
+        
         return Result.success(created);
     }
 
@@ -718,6 +733,10 @@ public class AdminController {
         permission.setId(id);
         permission.setUpdateTime(LocalDateTime.now());
         Permission updated = permissionService.updatePermission(permission);
+        
+        // 刷新权限缓存
+        permissionCacheService.refreshPermissionCache();
+        
         return Result.success(updated);
     }
 
@@ -730,6 +749,10 @@ public class AdminController {
 
 
         permissionService.deletePermission(id);
+        
+        // 刷新权限缓存
+        permissionCacheService.refreshPermissionCache();
+        
         return Result.success(null);
     }
 
