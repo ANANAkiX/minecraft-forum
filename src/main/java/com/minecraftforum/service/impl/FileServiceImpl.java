@@ -10,6 +10,7 @@ import com.minecraftforum.config.OssConfig;
 import com.minecraftforum.entity.SysFile;
 import com.minecraftforum.mapper.SysFileMapper;
 import com.minecraftforum.service.FileService;
+import com.minecraftforum.util.ResourceUtil;
 import com.minecraftforum.util.SnowflakeIdGenerator;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -113,18 +114,8 @@ public class FileServiceImpl implements FileService {
             log.error("文件上传失败: {}", e.getMessage(), e);
             throw new RuntimeException("文件上传失败: " + e.getMessage(), e);
         } finally {
-            // 关闭流
-            if (inputStream != null) {
-                try {
-                    inputStream.close();
-                } catch (Exception e) {
-                    log.error("关闭输入流失败", e);
-                }
-            }
-            // 关闭 OSS 客户端
-            if (ossClient != null) {
-                ossClient.shutdown();
-            }
+            // 关闭流和 OSS 客户端
+            ResourceUtil.closeResources(inputStream, ossClient);
         }
     }
     
@@ -184,16 +175,7 @@ public class FileServiceImpl implements FileService {
             
         } catch (Exception e) {
             // 如果出错，关闭已创建的流和客户端
-            if (inputStream != null) {
-                try {
-                    inputStream.close();
-                } catch (Exception ex) {
-                    log.error("关闭输入流失败", ex);
-                }
-            }
-            if (ossClient != null) {
-                ossClient.shutdown();
-            }
+            ResourceUtil.closeResources(inputStream, ossClient);
             log.error("文件下载失败: {}", e.getMessage(), e);
             throw new RuntimeException("文件下载失败: " + e.getMessage(), e);
         }
@@ -228,9 +210,7 @@ public class FileServiceImpl implements FileService {
             log.error("文件删除失败: {}", e.getMessage(), e);
             throw new RuntimeException("文件删除失败: " + e.getMessage(), e);
         } finally {
-            if (ossClient != null) {
-                ossClient.shutdown();
-            }
+            ResourceUtil.shutdownQuietly(ossClient);
         }
     }
     

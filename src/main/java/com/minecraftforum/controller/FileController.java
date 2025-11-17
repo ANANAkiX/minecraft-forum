@@ -4,6 +4,7 @@ import com.minecraftforum.common.Result;
 import com.minecraftforum.config.custom.annotations.AnonymousAccess;
 import com.minecraftforum.entity.SysFile;
 import com.minecraftforum.service.FileService;
+import com.minecraftforum.util.ResourceUtil;
 import com.minecraftforum.util.SecurityUtil;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -137,8 +138,9 @@ public class FileController {
     
     /**
      * 根据资源ID获取文件列表
+     * 注意：此接口允许匿名访问，但会根据用户权限决定是否返回敏感信息（文件URL和文件名）
      */
-    @Operation(summary = "获取资源文件列表", description = "根据资源ID获取该资源关联的所有文件")
+    @Operation(summary = "获取资源文件列表", description = "根据资源ID获取该资源关联的所有文件。无下载权限的用户将无法看到文件URL和文件名")
     @GetMapping("/resource/{resourceId}")
     @AnonymousAccess
     public Result<List<SysFile>> getFilesByResourceId(
@@ -147,14 +149,15 @@ public class FileController {
         
         List<SysFile> files = fileService.getFilesByResourceId(resourceId);
         
-        // 检查用户是否有下载权限，如果没有权限则屏蔽 fileUrl 和 fileName
-        boolean hasDownloadPermission = securityUtil.hasPermission("resource:download");
-        if (!hasDownloadPermission) {
+        // 根据用户权限决定是否返回敏感信息
+        // 注意：这是业务逻辑层面的权限控制，不是访问控制
+        // PermissionInterceptor 只控制接口访问权限，这里控制返回数据的详细程度
+        if (!securityUtil.hasPermission("resource:download")) {
             // 如果没有下载权限，屏蔽敏感信息（文件URL和文件名）
-            for (SysFile file : files) {
+            files.forEach(file -> {
                 file.setFileUrl(null);
                 file.setFileName(null);
-            }
+            });
         }
         
         return Result.success(files);
@@ -220,29 +223,11 @@ public class FileController {
                     
         } catch (IllegalArgumentException e) {
             // 关闭已创建的流和客户端
-            if (inputStream != null) {
-                try {
-                    inputStream.close();
-                } catch (Exception ex) {
-                    // 忽略
-                }
-            }
-            if (ossClient != null) {
-                ossClient.shutdown();
-            }
+            ResourceUtil.closeResources(inputStream, ossClient);
             return ResponseEntity.status(404).build();
         } catch (Exception e) {
             // 关闭已创建的流和客户端
-            if (inputStream != null) {
-                try {
-                    inputStream.close();
-                } catch (Exception ex) {
-                    // 忽略
-                }
-            }
-            if (ossClient != null) {
-                ossClient.shutdown();
-            }
+            ResourceUtil.closeResources(inputStream, ossClient);
             return ResponseEntity.status(500).build();
         }
     }

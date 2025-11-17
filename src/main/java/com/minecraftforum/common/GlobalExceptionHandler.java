@@ -15,10 +15,28 @@ import java.util.stream.Collectors;
 @RestControllerAdvice
 public class GlobalExceptionHandler {
     
-    @ExceptionHandler(Exception.class)
-    public Result<?> handleException(Exception e) {
-        log.error("系统异常", e);
-        return Result.error("系统异常：" + e.getMessage());
+    @ExceptionHandler(IllegalArgumentException.class)
+    public Result<?> handleIllegalArgumentException(IllegalArgumentException e) {
+        log.warn("参数错误: {}", e.getMessage());
+        return Result.error(400, e.getMessage());
+    }
+    
+    @ExceptionHandler(RuntimeException.class)
+    public Result<?> handleRuntimeException(RuntimeException e) {
+        // 对于已知的业务异常，只记录警告
+        String message = e.getMessage();
+        if (message != null && (message.contains("已存在") || 
+                                message.contains("不存在") || 
+                                message.contains("错误") ||
+                                message.contains("失败") ||
+                                message.contains("已被禁用") ||
+                                message.contains("不可用"))) {
+            log.warn("业务异常: {}", message);
+            return Result.error(400, message);
+        }
+        // 未知的运行时异常，记录错误
+        log.error("运行时异常", e);
+        return Result.error(500, "操作失败：" + message);
     }
     
     @ExceptionHandler(MethodArgumentNotValidException.class)
@@ -46,7 +64,14 @@ public class GlobalExceptionHandler {
     public Result<?> handleAccessDeniedException(AccessDeniedException e) {
         return Result.error(403, "没有权限访问该资源");
     }
+    
+    @ExceptionHandler(Exception.class)
+    public Result<?> handleException(Exception e) {
+        log.error("系统异常", e);
+        return Result.error(500, "系统异常：" + e.getMessage());
+    }
 }
+
 
 
 

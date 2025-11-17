@@ -34,3 +34,4 @@ public class ElasticsearchProperties {
     private String socketTimeout = "60s";
 }
 
+
